@@ -23,9 +23,15 @@ func databaseBootstrap(k *Kernel) {
 	fmt.Println("DATABASE BOOT")
 	mapping := k.config.mapping
 	mapping["database"] = &DatabaseConfig{}
-	event := <- k.event
-	color.Green("Evento %v en database", event)
-	conf := k.config.mapping["database"].(*DatabaseConfig)
 
-	k.container.RegisterType("database", NewConnection, conf.Dialect, conf.Uri)
+	var baz OnKernelReady = func(k *Kernel){
+		color.Green("Evento en database")
+		conf := k.config.mapping["database"].(*DatabaseConfig)
+		k.container.RegisterType("database", NewConnection, conf.Dialect, conf.Uri)
+	}
+	k.subscribe(baz)
+
+
+
+
 }

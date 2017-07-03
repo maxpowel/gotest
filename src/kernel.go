@@ -3,19 +3,29 @@ package main
 import (
 	"github.com/fgrosse/goldi"
 	"github.com/fgrosse/goldi/validation"
+	"fmt"
 )
 
 type Kernel struct {
-	event chan int
+	event []OnKernelReady
 	config *Config
 	registry goldi.TypeRegistry
 	container *goldi.Container
+
+}
+
+type OnKernelReady func(k *Kernel)
+
+func (k Kernel) subscribe(ready OnKernelReady) {
+	k.event = append(k.event, ready)
+	fmt.Printf("NOTIFICANDO %v", len(k.event))
 }
 
 
 func newKernel(configPath, paramsPath string, bootstrapModules []func(k *Kernel)) *Kernel {
 	k := Kernel{}
-	k.event = make(chan int)
+
+	//k.event = make(chan int)
 	k.registry = goldi.NewTypeRegistry()
 	k.container = goldi.NewContainer(k.registry, nil)
 	k.container.RegisterType("config", NewConfig, configPath, paramsPath)
@@ -24,7 +34,7 @@ func newKernel(configPath, paramsPath string, bootstrapModules []func(k *Kernel)
 	// Config must be created before module bootstraping
 	k.config = k.container.MustGet("config").(*Config)
 	for _, f := range bootstrapModules {
-		go f(&k)
+		f(&k)
 	}
 
 	// Check that container is ok
@@ -34,7 +44,10 @@ func newKernel(configPath, paramsPath string, bootstrapModules []func(k *Kernel)
 	k.config.load()
 	k.container.Config = k.config.mapping
 
-	k.event <- 1
-	k.event <- 1
+	for _, f := range k.event {
+		f(&k)
+	}
+
+
 	return &k
 }
