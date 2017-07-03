@@ -6,3 +6,8 @@ message Respuesta {
   string message = 1;
   int32 status_code = 2;
 }
+
+
+message SetupRequest {
+
+}

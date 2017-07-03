@@ -20,7 +20,7 @@ func NewConnection(dialect string, uri string) *gorm.DB {
 
 
 func databaseBootstrap(k *Kernel) {
-	fmt.Println("DATABASE BOOT")
+	//fmt.Println("DATABASE BOOT")
 	mapping := k.config.mapping
 	mapping["database"] = &DatabaseConfig{}
 
