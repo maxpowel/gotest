@@ -23,6 +23,7 @@ type PlayList struct {
 	SourceType string
 }
 
+
 func mqttBootstrap(k *Kernel) {
 	mapping := k.config.mapping
 	mapping["mqtt"] = &MqttConfig{}
@@ -30,16 +31,23 @@ func mqttBootstrap(k *Kernel) {
 	var baz OnKernelReady = func(k *Kernel){
 		color.Green("Evento %v en mqtt")
 		conf := k.config.mapping["mqtt"].(*MqttConfig)
-
 		//conf = k.config.mapping["mqtt"]
 		// Start mqtt connection
 		//opts := mqtt.NewClientOptions().AddBroker("tcp://iot.eclipse.org:1883").SetClientID("gotrivial")
+		fmt.Println(fmt.Sprintf("tcp://%v:%v", conf.Hostname, conf.Port))
 		opts := mqtt.NewClientOptions().AddBroker(fmt.Sprintf("tcp://%v:%v", conf.Hostname, conf.Port))
 
 		//opts := mqtt.NewClientOptions().AddBroker(fmt.Sprintf("tcp://%v:%v", "a", "b"))
 		opts.SetKeepAlive(2 * time.Second)
 		var f mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
+			msg.Topic()
 			color.Blue("TOPIC: %s\n", msg.Topic())
+			/*switch msg.Topic() {
+				case "setup":
+
+			}*/
+			fmt.Println("BIEEN")
+			return
 			newTest := &Respuesta{}
 			/*db, err := gorm.Open("mysql", "mqtt:123456@tcp(localhost:3306)/mqtt?charset=utf8&parseTime=true")
 			// Migrate the schema

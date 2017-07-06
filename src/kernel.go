@@ -16,7 +16,7 @@ type Kernel struct {
 
 type OnKernelReady func(k *Kernel)
 
-func (k Kernel) subscribe(ready OnKernelReady) {
+func (k *Kernel) subscribe(ready OnKernelReady) {
 	k.event = append(k.event, ready)
 	fmt.Printf("NOTIFICANDO %v", len(k.event))
 }
@@ -44,7 +44,10 @@ func newKernel(configPath, paramsPath string, bootstrapModules []func(k *Kernel)
 	k.config.load()
 	k.container.Config = k.config.mapping
 
+	// On kernel ready event
+
 	for _, f := range k.event {
+		fmt.Println("AAAAAA")
 		f(&k)
 	}
 
