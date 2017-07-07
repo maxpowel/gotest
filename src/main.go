@@ -16,7 +16,10 @@ import (
 //////////////
 
 func main() {
-	cosa()
+	//mv := NewMasMovilFetcher(Credentials{username:"alvaro_gg@hotmail.com", password:"MBAR4B1"})
+	mv := NewPepephoneFetcher(Credentials{username:"maxpowel@gmail.com", password:"TD2nWhG6"})
+	c ,_ := mv.getInternetConsumption("677077536")
+	fmt.Println(c)
 	return
 	// Parse parameters
 	configPtr := flag.String("config", "config.yml", "Configuration file")
