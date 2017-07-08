@@ -10,24 +10,70 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/fatih/color"
 	"flag"
+	"time"
+	"github.com/RichardKnop/machinery/v1/tasks"
 
+	"github.com/RichardKnop/machinery/v1"
+	"net/http"
+	"github.com/gorilla/mux"
 )
 
 //////////////
 
+
+
+
+func Index(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "Welcome!")
+}
+
+func TodoIndex(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "Todo Index!")
+}
+
+func TodoShow(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	todoId := vars["todoId"]
+	fmt.Fprintln(w, "Todo show:", todoId)
+}
+
+func Index2(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("COSA","ALGO")
+	fmt.Println(r.Header.Get("token"))
+	w.WriteHeader(34)
+
+	fmt.Fprintln(w, "Welcome!")
+
+}
 func main() {
-	//mv := NewMasMovilFetcher(Credentials{username:"alvaro_gg@hotmail.com", password:"MBAR4B1"})
-	mv := NewPepephoneFetcher(Credentials{username:"maxpowel@gmail.com", password:"TD2nWhG6"})
-	c ,_ := mv.getInternetConsumption("677077536")
-	fmt.Println(c)
+
+	router := mux.NewRouter().StrictSlash(true)
+	router.HandleFunc("/", Index)
+	router.HandleFunc("/todos", TodoIndex)
+	router.HandleFunc("/todos/{todoId}", TodoShow)
+	router.Methods("PUT").Path("/este").Name("este").HandlerFunc(Index2)
+	http.ListenAndServe(":8080", router)
+
 	return
+	//mv := NewMasMovilFetcher(Credentials{username:"alvaro_gg@hotmail.com", password:"MBAR4B1"})
+	//mv := NewPepephoneFetcher(Credentials{username:"maxpowel@gmail.com", password:"TD2nWhG6"})
+	//c ,_ := mv.getInternetConsumption("677077536")
+	//fmt.Println(c)
+
+
+
+	// The second argument is a consumer tag
+	// Ideally, each worker should have a unique tag (worker1, worker2 etc)
+
+
 	// Parse parameters
 	configPtr := flag.String("config", "config.yml", "Configuration file")
 	parametersPtr := flag.String("parameters", "parameters.yml", "Parameters file")
 	flag.Parse()
 	color.Green("Starting...")
 	// Dependency injection container
-	f := []func(k *Kernel){mqttBootstrap, databaseBootstrap}
+	//f := []func(k *Kernel){mqttBootstrap, databaseBootstrap, machineryBootstrap}
+	f := []func(k *Kernel){mqttBootstrap,databaseBootstrap, machineryBootstrap}
 
 	kernel := newKernel(*configPtr, *parametersPtr, f)
 
@@ -39,6 +85,44 @@ func main() {
 
 	//fmt.Println(conf)
 	//fmt.Println(conf["mqtt"].(map[interface{}]interface{})["topic"])
+
+	time.Sleep(5 * time.Second)
+	fmt.Println("EL OTRO HILO")
+
+	// Enviar tarea
+	task0 := tasks.Signature{
+		Name: "add",
+		Args: []tasks.Arg{
+			{
+				Type:  "int64",
+				Value: 1,
+			},
+			{
+				Type:  "int64",
+				Value: 1,
+			},
+		},
+	}
+
+	fmt.Println("Enviando task...")
+	server := kernel.container.MustGet("machinery").(*machinery.Server)
+	asyncResult, err := server.SendTask(&task0)
+	if err != nil {
+		fmt.Println("Could not send task: %s", err.Error())
+	}
+	fmt.Println("Task enviada")
+
+	fmt.Println("Esperando resultado ...")
+	results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
+	if err != nil {
+		fmt.Println("Getting task result failed with error: %s", err.Error())
+	}
+	fmt.Printf(
+		"%v + %v = %v\n",
+		asyncResult.Signature.Args[0].Value,
+		asyncResult.Signature.Args[1].Value,
+		results[0].Interface(),
+	)
 
 	daemonize()
 }

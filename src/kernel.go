@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/fgrosse/goldi"
 	"github.com/fgrosse/goldi/validation"
-	"fmt"
+
 )
 
 type Kernel struct {
@@ -18,7 +18,7 @@ type OnKernelReady func(k *Kernel)
 
 func (k *Kernel) subscribe(ready OnKernelReady) {
 	k.event = append(k.event, ready)
-	fmt.Printf("NOTIFICANDO %v", len(k.event))
+
 }
 
 
@@ -47,7 +47,6 @@ func newKernel(configPath, paramsPath string, bootstrapModules []func(k *Kernel)
 	// On kernel ready event
 
 	for _, f := range k.event {
-		fmt.Println("AAAAAA")
 		f(&k)
 	}
 

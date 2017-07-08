@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"errors"
 	"strings"
+	"github.com/fatih/color"
 )
 
 type ConfigurationParameters struct {
@@ -145,10 +146,12 @@ func load(configurationPath string, parametersPath string, mapping map[string]in
 
 		var moduleConf, moduleErr = mapping[k]
 		if !moduleErr {
-			return nil, err
-		}
+			color.Yellow("Ignorando configuracion de %v", k)
+			//return nil, err
+		} else {
 
-		FillStruct(moduleConf, v.(map[interface {}]interface {}))
+			FillStruct(moduleConf, v.(map[interface{}]interface{}))
+		}
 	}
 
 	return conf, nil

@@ -6,7 +6,6 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"log"
 	"regexp"
-	"fmt"
 	"strconv"
 )
 
@@ -15,7 +14,7 @@ type MasMovilFetcher struct {
 	credentials Credentials
 }
 
-func (f *MasMovilFetcher) getInternetConsumption(phoneNumber string) (InternetConsumption, error){
+func (f *MasMovilFetcher) login() {
 	form := url.Values{}
 	form.Add("action", "login")
 	form.Add("url", "")
@@ -26,25 +25,30 @@ func (f *MasMovilFetcher) getInternetConsumption(phoneNumber string) (InternetCo
 	time.Sleep(3 * time.Second)
 	f.fetcher.post("https://yosoymas.masmovil.es/validate/", form)
 	f.fetcher.SaveCookies("cookies.json")
+	time.Sleep(1 * time.Second)
+}
 
+func (f *MasMovilFetcher) getInternetConsumption(phoneNumber string) (InternetConsumption, error){
+
+	//f.login()
+	f.fetcher.LoadCookies("cookies.json")
 	res, err := f.fetcher.get("https://yosoymas.masmovil.es/consumo/?line="+phoneNumber)
 	doc, err := goquery.NewDocumentFromResponse(res)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	ci := make(chan InternetConsumption)
-
-	go doc.Find(".box-main-content").Find(".progress").Each(func(i int, s *goquery.Selection) {
+	//ci := make(chan InternetConsumption)
+	c := InternetConsumption{}
+	doc.Find(".box-main-content").Find(".progress").Each(func(i int, s *goquery.Selection) {
 		// For each item found, get the band and title
 		//c := s.Find("span").Text()
-		fmt.Println("AQI")
 		re := regexp.MustCompile("([0-9]+)|(infinito)")
 		r := re.FindAllString(s.Text(), -1)
-		c := InternetConsumption{}
+
 		if i == 0 {
 
-			fmt.Printf("Megas gastados %v de %v\n", r[0], r[1])
+			//fmt.Printf("Megas gastados %v de %v\n", r[0], r[1])
 			consumed, err := strconv.ParseInt(r[0],10, 64)
 			if err == nil {
 				c.consumed = consumed
@@ -54,14 +58,12 @@ func (f *MasMovilFetcher) getInternetConsumption(phoneNumber string) (InternetCo
 			if err == nil {
 				c.total = total
 			}
-			ci <- c
 		} else {
-			fmt.Printf("Minutos gastados %v de %v\n", r[0], r[1])
+			//fmt.Printf("Minutos gastados %v de %v\n", r[0], r[1])
 		}
 	})
-	fmt.Println("ESPERANDO CHANNEL")
 	//c := <- ci
-	return InternetConsumption{}, nil
+	return c, nil
 	//f.fetcher.LoadCookies("cookies.json")
 
 }

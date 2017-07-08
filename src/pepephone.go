@@ -18,18 +18,23 @@ type PepephoneFetcher struct {
 	credentials Credentials
 }
 
-func (f *PepephoneFetcher) getInternetConsumption(phoneNumber string) (InternetConsumption, error){
+func (f *PepephoneFetcher) login() {
 	form := url.Values{}
 	form.Add("request_uri", "/login")
 	form.Add("email", f.credentials.username)
 	form.Add("password", f.credentials.password)
 
-	//res, _ := f.fetcher.post("https://www.pepephone.com/login", form)
-	//f.fetcher.SaveCookies("cookies.json")
+	res, _ := f.fetcher.post("https://www.pepephone.com/login", form)
+	f.isLogged(res)
+	f.fetcher.SaveCookies("cookies.json")
 	//fmt.Println(f.fetcher.cookies())
 	//data, _ := ioutil.ReadAll(res.Body)
-	//data, _ := ioutil.ReadAll(res.Body)
 	//fmt.Println(string(data))
+}
+
+func (f *PepephoneFetcher) getInternetConsumption(phoneNumber string) (InternetConsumption, error){
+
+	f.login()
 f.fetcher.LoadCookies("cookies.json")
 
 	//time.Sleep(time.Second * 3)
@@ -45,7 +50,7 @@ f.fetcher.LoadCookies("cookies.json")
 	//fmt.Println(string(data))
 	//ci := make(chan InternetConsumption)
 	c := InternetConsumption{}
-	doc.Find(".grpelem").Each(func(i int, s *goquery.Selection) {
+	doc.Find("h3").Each(func(i int, s *goquery.Selection) {
 		// For each item found, get the band and title
 		//c := s.Find("span").Text()
 		c.consumed = 33
