@@ -11,3 +11,6 @@ machinery:
    broker: "redis://localhost:6379/0"
    resultBackend: "redis://localhost:6379/0"
    defaultQueue: "machinery_tasks"
+
+api:
+   port: 8080

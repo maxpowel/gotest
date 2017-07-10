@@ -10,12 +10,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/fatih/color"
 	"flag"
-	"time"
-	"github.com/RichardKnop/machinery/v1/tasks"
 
-	"github.com/RichardKnop/machinery/v1"
-	"net/http"
-	"github.com/gorilla/mux"
 )
 
 //////////////
@@ -23,38 +18,11 @@ import (
 
 
 
-func Index(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "Welcome!")
-}
 
-func TodoIndex(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "Todo Index!")
-}
-
-func TodoShow(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	todoId := vars["todoId"]
-	fmt.Fprintln(w, "Todo show:", todoId)
-}
-
-func Index2(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("COSA","ALGO")
-	fmt.Println(r.Header.Get("token"))
-	w.WriteHeader(34)
-
-	fmt.Fprintln(w, "Welcome!")
-
-}
 func main() {
 
-	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/", Index)
-	router.HandleFunc("/todos", TodoIndex)
-	router.HandleFunc("/todos/{todoId}", TodoShow)
-	router.Methods("PUT").Path("/este").Name("este").HandlerFunc(Index2)
-	http.ListenAndServe(":8080", router)
 
-	return
+
 	//mv := NewMasMovilFetcher(Credentials{username:"alvaro_gg@hotmail.com", password:"MBAR4B1"})
 	//mv := NewPepephoneFetcher(Credentials{username:"maxpowel@gmail.com", password:"TD2nWhG6"})
 	//c ,_ := mv.getInternetConsumption("677077536")
@@ -72,8 +40,8 @@ func main() {
 	flag.Parse()
 	color.Green("Starting...")
 	// Dependency injection container
-	//f := []func(k *Kernel){mqttBootstrap, databaseBootstrap, machineryBootstrap}
-	f := []func(k *Kernel){mqttBootstrap,databaseBootstrap, machineryBootstrap}
+	f := []func(k *Kernel){apiRestBootstrap}
+	//f := []func(k *Kernel){mqttBootstrap,databaseBootstrap, machineryBootstrap, apiRestBootstrap}
 
 	kernel := newKernel(*configPtr, *parametersPtr, f)
 
@@ -86,6 +54,7 @@ func main() {
 	//fmt.Println(conf)
 	//fmt.Println(conf["mqtt"].(map[interface{}]interface{})["topic"])
 
+	/*
 	time.Sleep(5 * time.Second)
 	fmt.Println("EL OTRO HILO")
 
@@ -123,7 +92,7 @@ func main() {
 		asyncResult.Signature.Args[1].Value,
 		results[0].Interface(),
 	)
-
+*/
 	daemonize()
 }
 
