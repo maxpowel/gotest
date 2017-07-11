@@ -22,7 +22,19 @@ import (
 func main() {
 
 
+	db := NewConnection("mysql", "mqtt:123456@tcp(localhost:3306)/mqtt?charset=utf8&parseTime=true")
 
+	u := User{}
+    db.Where(&User{Email:"maxpowel@gmail.com2"}).First(&u)
+
+	fmt.Println(u.ID)
+	//u2 := NewUser()
+	//PlainPassword(&u2, "123456")
+	//fmt.Println(checkPassword(&u, "123456"))
+	/*fmt.Println(checkPassword(&u2, "some password"))
+	fmt.Println(checkPassword(&u2, "123456"))
+	db.Create(&u2)*/
+	return
 	//mv := NewMasMovilFetcher(Credentials{username:"alvaro_gg@hotmail.com", password:"MBAR4B1"})
 	//mv := NewPepephoneFetcher(Credentials{username:"maxpowel@gmail.com", password:"TD2nWhG6"})
 	//c ,_ := mv.getInternetConsumption("677077536")
