@@ -20,6 +20,8 @@ import (
 
 
 func main() {
+	u := NewUser()
+	PlainPassword(&u, "123456")
 // mirar esto https://stackoverflow.com/questions/33646948/go-using-mux-router-how-to-pass-my-db-to-my-handlers
 
 	/*db := NewConnection("mysql", "mqtt:123456@tcp(localhost:3306)/mqtt?charset=utf8&parseTime=true")

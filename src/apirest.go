@@ -7,8 +7,13 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/RangelReale/osin"
-	"github.com/jinzhu/gorm"
 	"time"
+	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/RichardKnop/machinery/v1"
+	"github.com/garyburd/redigo/redis"
+	"github.com/ShaleApps/osinredis"
+	"github.com/jinzhu/gorm"
+	"io/ioutil"
 )
 
 type ApiRestConfig struct {
@@ -41,367 +46,236 @@ func Index2(w http.ResponseWriter, r *http.Request) {
 }
 
 
-type OAuthClient struct {
-	UpdatedAt time.Time
-	Id string `gorm:"type:varchar(100);primary_key"`
-	Secret string `gorm:"not null"`
-	RedirectUri string `gorm:"not null"`
-	Extra string
+
+
+// Error represents a handler error. It provides methods for a HTTP status
+// code and embeds the built-in error interface.
+type Error interface {
+	error
+	Status() int
 }
 
-func (c OAuthClient) GetId()(string){
-	return c.Id
+// StatusError represents an error with an associated HTTP status code.
+type StatusError struct {
+	Code int
+	Err  error
 }
 
-func (c OAuthClient) GetSecret()(string){
-	return c.Secret
+// Allows StatusError to satisfy the error interface.
+func (se StatusError) Error() string {
+	return se.Err.Error()
 }
 
-func (c OAuthClient) GetRedirectUri()(string){
-	return c.RedirectUri
+// Returns our HTTP status code.
+func (se StatusError) Status() int {
+	return se.Code
 }
 
-func (c OAuthClient) GetUserData()(interface{}){
-	return c.Extra
+type Handler struct {
+	*Kernel
+	H func(k *Kernel, w http.ResponseWriter, r *http.Request) error
 }
 
-
-type OAuthAuthorizeData struct {
-	// Client information
-	Client OAuthClient `gorm:"ForeignKey"`
-
-	// Authorization code
-	Code string `gorm:"type:varchar(100);primary_key"`
-
-	// Token expiration in seconds
-	ExpiresIn int32
-
-	// Requested scope
-	Scope string
-
-	// Redirect Uri from request
-	RedirectUri string
-
-	// State data from request
-	State string
-
-	// Date created
-	CreatedAt time.Time
-
-	// Data to be passed to storage. Not used by the library.
-	UserData interface{}
-
-	// Optional code_challenge as described in rfc7636
-	CodeChallenge string
-	// Optional code_challenge_method as described in rfc7636
-	CodeChallengeMethod string
-}
-
-type OAuthAccessData struct {
-	// Client information
-	Client OAuthClient `gorm:"ForeignKey"`
-
-	// Authorize data, for authorization code
-	//AuthorizeData OAuthAuthorizeData `gorm:"ForeignKey"`
-
-	// Previous access data, for refresh token
-	PreviousRefer uint
-	//AccessData OAuthAccessData `gorm:"ForeignKey:PreviousRefer"`
-
-	// Access token
-	AccessToken string
-
-	// Refresh Token. Can be blank
-	RefreshToken string
-
-	// Token expiration in seconds
-	ExpiresIn int32
-
-	// Requested scope
-	Scope string
-
-	// Redirect Uri from request
-	RedirectUri string
-
-	// Date created
-	CreatedAt time.Time
-
-	// Data to be passed to storage. Not used by the library.
-	UserData interface{}
-}
-
-
-type GormStorage struct {
-	osin.Storage
-	db *gorm.DB
-}
-
-func (s *GormStorage) Clone() osin.Storage {
-	return s
-}
-
-func (s *GormStorage) Close() {
-	s.db.Close()
-}
-
-func (s *GormStorage) GetClient(id string) (osin.Client, error) {
-	client := OAuthClient{}
-	s.db.Where(OAuthClient{Id:id}).First(&client)
-	fmt.Printf("GetClient: %s\n", id)
-	if client.Id != "" {
-		return client, nil
-	}
-	return nil, osin.ErrNotFound
-}
-
-func (s *GormStorage) SetClient(id string, client osin.Client) error {
-	if id != "" {
-		c := OAuthClient{
-			Id: id,
-			Secret: client.GetSecret(),
-			RedirectUri: client.GetRedirectUri(),
-			Extra: client.GetUserData().(string),
+// ServeHTTP allows our Handler type to satisfy http.Handler.
+func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	err := h.H(h.Kernel, w, r)
+	if err != nil {
+		switch e := err.(type) {
+		case Error:
+			// We can retrieve the status here and write out a specific
+			// HTTP status code.
+			fmt.Printf("HTTP %d - %s", e.Status(), e)
+			http.Error(w, e.Error(), e.Status())
+		default:
+			// Any error types we don't specifically look out for default
+			// to serving a HTTP 500
+			http.Error(w, http.StatusText(http.StatusInternalServerError),
+				http.StatusInternalServerError)
 		}
-		s.db.Where(&OAuthClient{Id: id}).Delete(OAuthClient{})
-		fmt.Printf("SetClient: %s\n", id)
-		s.db.Create(&c)
 	}
+}
+
+func GetIndex(kernel *Kernel, w http.ResponseWriter, r *http.Request) error {
+
+	fmt.Println("EL OTRO HILO")
+
+	// Enviar tarea
+	task0 := tasks.Signature{
+		Name: "add",
+		Args: []tasks.Arg{
+			{
+				Type:  "int64",
+				Value: 1,
+			},
+			{
+				Type:  "int64",
+				Value: 1,
+			},
+		},
+	}
+
+	fmt.Println("Enviando task...")
+	server := kernel.container.MustGet("machinery").(*machinery.Server)
+	asyncResult, err := server.SendTask(&task0)
+
+	if err != nil {
+		// We return a status error here, which conveniently wraps the error
+		// returned from our DB queries. We can clearly define which errors
+		// are worth raising a HTTP 500 over vs. which might just be a HTTP
+		// 404, 403 or 401 (as appropriate). It's also clear where our
+		// handler should stop processing by returning early.
+		return StatusError{500, err}
+	}
+
+	w.Write([]byte(asyncResult.Signature.UUID))
+
+	results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
+	if err != nil {
+		fmt.Println("Getting task result failed with error: %s", err.Error())
+	}
+	fmt.Printf(
+		"%v + %v = %v\n",
+		asyncResult.Signature.Args[0].Value,
+		asyncResult.Signature.Args[1].Value,
+		results[0].Interface(),
+	)
+
+
 	return nil
 }
 
-func (s *GormStorage) SaveAuthorize(data *osin.AuthorizeData) error {
-	if data.Code != "" {
-		d := OAuthAuthorizeData{
-			Client:              data.Client.(OAuthClient),
-			Code:                data.Code,
-			ExpiresIn:           data.ExpiresIn,
-			Scope:               data.Scope,
-			RedirectUri:         data.RedirectUri,
-			State:               data.State,
-			CreatedAt:           data.CreatedAt,
-			UserData:            data.UserData,
-			CodeChallenge:       data.CodeChallenge,
-			CodeChallengeMethod: data.CodeChallengeMethod,
+func CheckToken(kernel *Kernel, w http.ResponseWriter, r *http.Request) error {
+	server := kernel.container.MustGet("oauth").(*osin.Server)
+	database := kernel.container.MustGet("database").(*gorm.DB)
+
+	resp := server.NewResponse()
+	defer resp.Close()
+	fmt.Println("CERO")
+	var err error
+	if ar := server.HandleAccessRequest(resp, r); ar != nil {
+		username := r.Form.Get("username")
+		password := r.Form.Get("password")
+		user := User{}
+		database.Where("username = ?", username).First(&user)
+		err = checkPassword(&user, password)
+		ar.Authorized = err == nil
+		if ar.Authorized {
+			ar.UserData = user.ID
 		}
-
-		s.db.Where(&OAuthAuthorizeData{Code: data.Code}).Delete(OAuthAuthorizeData{})
-		//s.db.Create(&data.(*OAuthAuthorizeData))
-		s.db.Create(&d)
-		fmt.Printf("SaveAuthorize: %s\n", data.Code)
-		//s.authorize[data.Code] = data
+		server.FinishAccessRequest(resp, r, ar)
 	}
-	return nil
-}
+	osin.OutputJSON(resp, w, r)
 
-func (s *GormStorage) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
-	fmt.Printf("LoadAuthorize: %s\n", code)
-	data := OAuthAuthorizeData{}
-	s.db.Where(OAuthAuthorizeData{Code:code}).First(&data)
-	if data.Code != "" {
-		oData := osin.AuthorizeData{
-			Client:              data.Client,
-			Code:                data.Code,
-			ExpiresIn:           data.ExpiresIn,
-			Scope:               data.Scope,
-			RedirectUri:         data.RedirectUri,
-			State:               data.State,
-			CreatedAt:           data.CreatedAt,
-			UserData:            data.UserData,
-			CodeChallenge:       data.CodeChallenge,
-			CodeChallengeMethod: data.CodeChallengeMethod,
-		}
-		return &oData, nil
-	}
-	return nil, osin.ErrNotFound
-}
-
-func (s *GormStorage) RemoveAuthorize(code string) error {
-	fmt.Printf("RemoveAuthorize: %s\n", code)
-	if code != "" {
-		s.db.Where(&OAuthAuthorizeData{Code: code}).Delete(OAuthAuthorizeData{})
-	}
-	//delete(s.authorize, code)
-	return nil
-}
-
-func (s *GormStorage) SaveAccess(data *osin.AccessData) error {
-	fmt.Printf("SaveAccess: %s\n", data.AccessToken)
-	/*at := OAuthAccessData {
-		Client: data.Client.(OAuthClient),
-		AuthorizeData: data.AccessData.AccessToken,
-
-		// Previous access data, for refresh token
-		PreviousRefer uint
-		AccessData OAuthAccessData `gorm:"ForeignKey:PreviousRefer"`
-
-		// Access token
-		AccessToken string
-
-		// Refresh Token. Can be blank
-		RefreshToken string
-
-		// Token expiration in seconds
-		ExpiresIn int32
-
-		// Requested scope
-		Scope string
-
-		// Redirect Uri from request
-		RedirectUri string
-
-		// Date created
-		CreatedAt time.Time
-
-		// Data to be passed to storage. Not used by the library.
-		UserData interface{}
+	/*if err != nil {
+		// We return a status error here, which conveniently wraps the error
+		// returned from our DB queries. We can clearly define which errors
+		// are worth raising a HTTP 500 over vs. which might just be a HTTP
+		// 404, 403 or 401 (as appropriate). It's also clear where our
+		// handler should stop processing by returning early.
+		return StatusError{404, fmt.Errorf("User not found")}
 	}*/
 
-	/*s.access[data.AccessToken] = data
-	if data.RefreshToken != "" {
-		s.refresh[data.RefreshToken] = data.AccessToken
+
+	return nil
+}
+
+func GetConsumption(kernel *Kernel, w http.ResponseWriter, r *http.Request) error {
+	//server := kernel.container.MustGet("oauth").(*osin.Server)
+	//database := kernel.container.MustGet("database").(*gorm.DB)
+
+	//"alvaro_gg@hotmail.com"
+	//"MBAR4B1"
+
+	buf, _ := ioutil.ReadAll(r.Body)
+	fmt.Println(string(buf))
+
+	username := r.Form.Get("username")
+	password := r.Form.Get("password")
+	username = "alvaro_gg@hotmail.com"
+	password = "MBAR4B1"
+
+	fmt.Println(username)
+	// Enviar tarea
+	task0 := tasks.Signature{
+		Name: "consumption",
+		Args: []tasks.Arg{
+			{
+				Type:  "string",
+				Value: username,
+			},
+			{
+				Type:  "string",
+				Value: password,
+			},
+		},
+	}
+
+	fmt.Println("Enviando task...")
+	server := kernel.container.MustGet("machinery").(*machinery.Server)
+
+
+	state, err := server.GetBackend().GetState("task_18129669-4f6e-4add-8920-5a57afda9ecf")
+	fmt.Println(state.Results[0].Value)
+
+
+	return nil
+
+
+	asyncResult, err := server.SendTask(&task0)
+
+	if err != nil {
+		// We return a status error here, which conveniently wraps the error
+		// returned from our DB queries. We can clearly define which errors
+		// are worth raising a HTTP 500 over vs. which might just be a HTTP
+		// 404, 403 or 401 (as appropriate). It's also clear where our
+		// handler should stop processing by returning early.
+		return StatusError{500, err}
+	}
+
+	w.Write([]byte(asyncResult.Signature.UUID))
+
+	results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
+
+	fmt.Println(results[0])
+	/*if err != nil {
+		// We return a status error here, which conveniently wraps the error
+		// returned from our DB queries. We can clearly define which errors
+		// are worth raising a HTTP 500 over vs. which might just be a HTTP
+		// 404, 403 or 401 (as appropriate). It's also clear where our
+		// handler should stop processing by returning early.
+		return StatusError{404, fmt.Errorf("User not found")}
 	}*/
+
+
 	return nil
 }
 
-func (s *GormStorage) LoadAccess(code string) (*osin.AccessData, error) {
-	fmt.Printf("LoadAccess: %s\n", code)
-	/*fmt.Println(s.access)
-	if d, ok := s.access[code]; ok {
-		return d, nil
-	}*/
-	return nil, osin.ErrNotFound
-}
-
-func (s *GormStorage) RemoveAccess(code string) error {
-	fmt.Printf("RemoveAccess: %s\n", code)
-	//delete(s.access, code)
-	return nil
-}
-
-func (s *GormStorage) LoadRefresh(code string) (*osin.AccessData, error) {
-	fmt.Printf("LoadRefresh: %s\n", code)
-	/*if d, ok := s.refresh[code]; ok {
-		return s.LoadAccess(d)
-	}*/
-	return nil, osin.ErrNotFound
-}
-
-func (s *GormStorage) RemoveRefresh(code string) error {
-	fmt.Printf("RemoveRefresh: %s\n", code)
-	//delete(s.refresh, code)
-	return nil
-}
-
-
-////////////////////////
-
-type TestStorage struct {
-	clients   map[string]osin.Client
-	authorize map[string]*osin.AuthorizeData
-	access    map[string]*osin.AccessData
-	refresh   map[string]string
-}
-
-func NewTestStorage() *TestStorage {
-	r := &TestStorage{
-		clients:   make(map[string]osin.Client),
-		authorize: make(map[string]*osin.AuthorizeData),
-		access:    make(map[string]*osin.AccessData),
-		refresh:   make(map[string]string),
+func NewRedisStorage() (*osinredis.Storage){
+	pool := &redis.Pool{
+		Dial: func() (redis.Conn, error) {
+			conn, err := redis.Dial("tcp", ":6379")
+			if err != nil {
+				return nil, err
+			}
+			return conn, nil
+		},
 	}
 
-	r.clients["1234"] = &osin.DefaultClient{
-		Id:          "1234",
-		Secret:      "aabbccdd",
-		RedirectUri: "http://localhost:14000/appauth",
-	}
-
-	return r
+	storage := osinredis.New(pool, "prefix")
+	storage.CreateClient(&osin.DefaultClient{
+		Id: "pepe",
+		RedirectUri: "http://google.es",
+		Secret: "lolazo",
+	})
+	return storage
 }
 
-func (s *TestStorage) Clone() osin.Storage {
-	return s
+func NewOAuthServer(k *Kernel) *osin.Server {
+	oauthConfig := osin.NewServerConfig()
+	oauthConfig.AllowedAccessTypes = osin.AllowedAccessType{osin.PASSWORD}
+	return osin.NewServer(oauthConfig, NewRedisStorage())
 }
-
-func (s *TestStorage) Close() {
-}
-
-func (s *TestStorage) GetClient(id string) (osin.Client, error) {
-	fmt.Println("AQUIII23333")
-	fmt.Printf("GetClient: %s\n", id)
-	if c, ok := s.clients[id]; ok {
-		return c, nil
-	}
-	fmt.Println("AQUIII233")
-	return nil, osin.ErrNotFound
-}
-
-func (s *TestStorage) SetClient(id string, client osin.Client) error {
-	fmt.Printf("SetClient: %s\n", id)
-	s.clients[id] = client
-	return nil
-}
-
-func (s *TestStorage) SaveAuthorize(data *osin.AuthorizeData) error {
-	fmt.Printf("SaveAuthorize: %s\n", data.Code)
-	s.authorize[data.Code] = data
-	return nil
-}
-
-func (s *TestStorage) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
-	fmt.Printf("LoadAuthorize: %s\n", code)
-	if d, ok := s.authorize[code]; ok {
-		return d, nil
-	}
-	return nil, osin.ErrNotFound
-}
-
-func (s *TestStorage) RemoveAuthorize(code string) error {
-	fmt.Printf("RemoveAuthorize: %s\n", code)
-	delete(s.authorize, code)
-	return nil
-}
-
-func (s *TestStorage) SaveAccess(data *osin.AccessData) error {
-	fmt.Printf("SaveAccess: %s\n", data.AccessToken)
-	s.access[data.AccessToken] = data
-	if data.RefreshToken != "" {
-		s.refresh[data.RefreshToken] = data.AccessToken
-	}
-	return nil
-}
-
-func (s *TestStorage) LoadAccess(code string) (*osin.AccessData, error) {
-	fmt.Printf("LoadAccess: %s\n", code)
-	fmt.Println(s.access)
-	if d, ok := s.access[code]; ok {
-		return d, nil
-	}
-	return nil, osin.ErrNotFound
-}
-
-func (s *TestStorage) RemoveAccess(code string) error {
-	fmt.Printf("RemoveAccess: %s\n", code)
-	delete(s.access, code)
-	return nil
-}
-
-func (s *TestStorage) LoadRefresh(code string) (*osin.AccessData, error) {
-	fmt.Printf("LoadRefresh: %s\n", code)
-	if d, ok := s.refresh[code]; ok {
-		return s.LoadAccess(d)
-	}
-	return nil, osin.ErrNotFound
-}
-
-func (s *TestStorage) RemoveRefresh(code string) error {
-	fmt.Printf("RemoveRefresh: %s\n", code)
-	delete(s.refresh, code)
-	return nil
-}
-
-
-func NewApiRest(port int) *mux.Router {
+func NewApiRest(k *Kernel, port int) *mux.Router {
 
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/", Index)
@@ -410,12 +284,18 @@ func NewApiRest(port int) *mux.Router {
 	router.Methods("PUT").Path("/este").Name("este").HandlerFunc(Index2)
 	fmt.Println("Escuchando en puerto ", port)
 
+	router.Handle("/tarea", Handler{k, GetIndex})
+	router.Handle("/consumption", Handler{k, GetConsumption})
 
-	oauthConfig := osin.NewServerConfig()
-	oauthConfig.AllowedAccessTypes = osin.AllowedAccessType{osin.PASSWORD}
-	server := osin.NewServer(oauthConfig, NewTestStorage())
+
+
+
+	k.container.RegisterType("oauth", NewOAuthServer, k)
+	k.container.MustGet("oauth")
+
+
 	// Authorization code endpoint
-	router.HandleFunc("/authorize", func(w http.ResponseWriter, r *http.Request) {
+	/*router.HandleFunc("/authorize", func(w http.ResponseWriter, r *http.Request) {
 		resp := server.NewResponse()
 		defer resp.Close()
 
@@ -427,9 +307,9 @@ func NewApiRest(port int) *mux.Router {
 			server.FinishAuthorizeRequest(resp, r, ar)
 		}
 		osin.OutputJSON(resp, w, r)
-	})
+	})*/
 
-	router.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {
+	/*router.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {
 		resp := server.NewResponse()
 		defer resp.Close()
 
@@ -442,24 +322,14 @@ func NewApiRest(port int) *mux.Router {
 		o["lol"] = "lel"
 		resp.Output = o
 		osin.OutputJSON(resp, w, r)
-	})
+	})*/
 
 //authorize?response_type=code&client_id=1234&redirect_uri=http%3A%2F%2Flocalhost%3A14000%2Fappauth%2Fcode
+//curl 'http://localhost:8090/token' -d 'grant_type=password&username=pepe&password=21212&client_id=pepe' -H 'Authorization: Basic cGVwZTpsb2xhem8='
 	// Access token endpoint
-	router.HandleFunc("/token", func(w http.ResponseWriter, r *http.Request) {
-		resp := server.NewResponse()
-		defer resp.Close()
-		fmt.Println("CERO")
-		if ar := server.HandleAccessRequest(resp, r); ar != nil {
-			fmt.Println("UNO")
-			ar.Authorized = true
-			server.FinishAccessRequest(resp, r, ar)
-			fmt.Println("DOS")
-		}
-		osin.OutputJSON(resp, w, r)
-	})
+	router.Handle("/token", Handler{k, CheckToken})
 
-	http.ListenAndServe(fmt.Sprintf(":%v", port), router)
+	go http.ListenAndServe(fmt.Sprintf(":%v", port), router)
 
 
 	return router
@@ -474,7 +344,7 @@ func apiRestBootstrap(k *Kernel) {
 	var baz OnKernelReady = func(k *Kernel){
 		color.Green("Evento en api")
 		conf := k.config.mapping["api"].(*ApiRestConfig)
-		k.container.RegisterType("api", NewApiRest, conf.Port)
+		k.container.RegisterType("api", NewApiRest, k, conf.Port)
 		k.container.MustGet("api")
 
 

@@ -28,6 +28,13 @@ func Add(args ...int64) (int64, error) {
 	return sum, nil
 }
 
+func GetConsumptionTask(username string, password string) (int64, error){
+	mv := NewMasMovilFetcher(Credentials{username: username, password: password})
+	//mv := NewPepephoneFetcher(Credentials{username:"maxpowel@gmail.com", password:"TD2nWhG6"})
+	c , err := mv.getInternetConsumption("677077536")
+	return c.consumed, err
+}
+
 func machineryBootstrap(k *Kernel) {
 	//fmt.Println("DATABASE BOOT")
 	mapping := k.config.mapping
@@ -63,6 +70,7 @@ func machineryBootstrap(k *Kernel) {
 		fmt.Println("Registrar tasks")
 		taskList := map[string]interface{}{
 			"add":        Add,
+			"consumption": GetConsumptionTask,
 		}
 		err = server.RegisterTasks(taskList)
 

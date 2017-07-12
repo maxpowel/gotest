@@ -14,7 +14,14 @@ type DatabaseConfig struct {
 
 func NewConnection(dialect string, uri string) *gorm.DB {
 	db, _ := gorm.Open(dialect, uri)
+	fmt.Println(uri)
+	//db.LogMode(true)
 	fmt.Println("CREANDO CONEXION")
+	//db.AutoMigrate(&User{})
+	/*u := NewUser()
+	PlainPassword(&u, "123456")
+	db.Create(&u)
+	db.Commit()*/
 	return db
 }
 

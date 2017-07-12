@@ -30,8 +30,8 @@ func (f *MasMovilFetcher) login() {
 
 func (f *MasMovilFetcher) getInternetConsumption(phoneNumber string) (InternetConsumption, error){
 
-	//f.login()
-	f.fetcher.LoadCookies("cookies.json")
+	f.login()
+	//f.fetcher.LoadCookies("cookies.json")
 	res, err := f.fetcher.get("https://yosoymas.masmovil.es/consumo/?line="+phoneNumber)
 	doc, err := goquery.NewDocumentFromResponse(res)
 	if err != nil {
