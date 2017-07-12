@@ -43,7 +43,7 @@ func Index2(w http.ResponseWriter, r *http.Request) {
 
 type OAuthClient struct {
 	UpdatedAt time.Time
-	Id string `gorm:"type:varchar(100);not null;unique"`
+	Id string `gorm:"type:varchar(100);primary_key"`
 	Secret string `gorm:"not null"`
 	RedirectUri string `gorm:"not null"`
 	Extra string
@@ -66,6 +66,69 @@ func (c OAuthClient) GetUserData()(interface{}){
 }
 
 
+type OAuthAuthorizeData struct {
+	// Client information
+	Client OAuthClient `gorm:"ForeignKey"`
+
+	// Authorization code
+	Code string `gorm:"type:varchar(100);primary_key"`
+
+	// Token expiration in seconds
+	ExpiresIn int32
+
+	// Requested scope
+	Scope string
+
+	// Redirect Uri from request
+	RedirectUri string
+
+	// State data from request
+	State string
+
+	// Date created
+	CreatedAt time.Time
+
+	// Data to be passed to storage. Not used by the library.
+	UserData interface{}
+
+	// Optional code_challenge as described in rfc7636
+	CodeChallenge string
+	// Optional code_challenge_method as described in rfc7636
+	CodeChallengeMethod string
+}
+
+type OAuthAccessData struct {
+	// Client information
+	Client OAuthClient `gorm:"ForeignKey"`
+
+	// Authorize data, for authorization code
+	//AuthorizeData OAuthAuthorizeData `gorm:"ForeignKey"`
+
+	// Previous access data, for refresh token
+	PreviousRefer uint
+	//AccessData OAuthAccessData `gorm:"ForeignKey:PreviousRefer"`
+
+	// Access token
+	AccessToken string
+
+	// Refresh Token. Can be blank
+	RefreshToken string
+
+	// Token expiration in seconds
+	ExpiresIn int32
+
+	// Requested scope
+	Scope string
+
+	// Redirect Uri from request
+	RedirectUri string
+
+	// Date created
+	CreatedAt time.Time
+
+	// Data to be passed to storage. Not used by the library.
+	UserData interface{}
+}
 
 
 type GormStorage struct {
@@ -93,36 +156,106 @@ func (s *GormStorage) GetClient(id string) (osin.Client, error) {
 
 func (s *GormStorage) SetClient(id string, client osin.Client) error {
 	if id != "" {
+		c := OAuthClient{
+			Id: id,
+			Secret: client.GetSecret(),
+			RedirectUri: client.GetRedirectUri(),
+			Extra: client.GetUserData().(string),
+		}
 		s.db.Where(&OAuthClient{Id: id}).Delete(OAuthClient{})
-		client.(OAuthClient).Id = id
 		fmt.Printf("SetClient: %s\n", id)
-		s.db.Create(&client)
+		s.db.Create(&c)
 	}
 	return nil
 }
 
 func (s *GormStorage) SaveAuthorize(data *osin.AuthorizeData) error {
-	fmt.Printf("SaveAuthorize: %s\n", data.Code)
-	//s.authorize[data.Code] = data
+	if data.Code != "" {
+		d := OAuthAuthorizeData{
+			Client:              data.Client.(OAuthClient),
+			Code:                data.Code,
+			ExpiresIn:           data.ExpiresIn,
+			Scope:               data.Scope,
+			RedirectUri:         data.RedirectUri,
+			State:               data.State,
+			CreatedAt:           data.CreatedAt,
+			UserData:            data.UserData,
+			CodeChallenge:       data.CodeChallenge,
+			CodeChallengeMethod: data.CodeChallengeMethod,
+		}
+
+		s.db.Where(&OAuthAuthorizeData{Code: data.Code}).Delete(OAuthAuthorizeData{})
+		//s.db.Create(&data.(*OAuthAuthorizeData))
+		s.db.Create(&d)
+		fmt.Printf("SaveAuthorize: %s\n", data.Code)
+		//s.authorize[data.Code] = data
+	}
 	return nil
 }
 
 func (s *GormStorage) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
 	fmt.Printf("LoadAuthorize: %s\n", code)
-	/*if d, ok := s.authorize[code]; ok {
-		return d, nil
-	}*/
+	data := OAuthAuthorizeData{}
+	s.db.Where(OAuthAuthorizeData{Code:code}).First(&data)
+	if data.Code != "" {
+		oData := osin.AuthorizeData{
+			Client:              data.Client,
+			Code:                data.Code,
+			ExpiresIn:           data.ExpiresIn,
+			Scope:               data.Scope,
+			RedirectUri:         data.RedirectUri,
+			State:               data.State,
+			CreatedAt:           data.CreatedAt,
+			UserData:            data.UserData,
+			CodeChallenge:       data.CodeChallenge,
+			CodeChallengeMethod: data.CodeChallengeMethod,
+		}
+		return &oData, nil
+	}
 	return nil, osin.ErrNotFound
 }
 
 func (s *GormStorage) RemoveAuthorize(code string) error {
 	fmt.Printf("RemoveAuthorize: %s\n", code)
+	if code != "" {
+		s.db.Where(&OAuthAuthorizeData{Code: code}).Delete(OAuthAuthorizeData{})
+	}
 	//delete(s.authorize, code)
 	return nil
 }
 
 func (s *GormStorage) SaveAccess(data *osin.AccessData) error {
 	fmt.Printf("SaveAccess: %s\n", data.AccessToken)
+	/*at := OAuthAccessData {
+		Client: data.Client.(OAuthClient),
+		AuthorizeData: data.AccessData.AccessToken,
+
+		// Previous access data, for refresh token
+		PreviousRefer uint
+		AccessData OAuthAccessData `gorm:"ForeignKey:PreviousRefer"`
+
+		// Access token
+		AccessToken string
+
+		// Refresh Token. Can be blank
+		RefreshToken string
+
+		// Token expiration in seconds
+		ExpiresIn int32
+
+		// Requested scope
+		Scope string
+
+		// Redirect Uri from request
+		RedirectUri string
+
+		// Date created
+		CreatedAt time.Time
+
+		// Data to be passed to storage. Not used by the library.
+		UserData interface{}
+	}*/
+
 	/*s.access[data.AccessToken] = data
 	if data.RefreshToken != "" {
 		s.refresh[data.RefreshToken] = data.AccessToken

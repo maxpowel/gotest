@@ -20,21 +20,21 @@ import (
 
 
 func main() {
+// mirar esto https://stackoverflow.com/questions/33646948/go-using-mux-router-how-to-pass-my-db-to-my-handlers
 
-
-	db := NewConnection("mysql", "mqtt:123456@tcp(localhost:3306)/mqtt?charset=utf8&parseTime=true")
+	/*db := NewConnection("mysql", "mqtt:123456@tcp(localhost:3306)/mqtt?charset=utf8&parseTime=true")
 
 	u := User{}
     db.Where(&User{Email:"maxpowel@gmail.com2"}).First(&u)
 
-	fmt.Println(u.ID)
+	fmt.Println(u.ID)*/
 	//u2 := NewUser()
 	//PlainPassword(&u2, "123456")
 	//fmt.Println(checkPassword(&u, "123456"))
 	/*fmt.Println(checkPassword(&u2, "some password"))
 	fmt.Println(checkPassword(&u2, "123456"))
 	db.Create(&u2)*/
-	return
+	//return
 	//mv := NewMasMovilFetcher(Credentials{username:"alvaro_gg@hotmail.com", password:"MBAR4B1"})
 	//mv := NewPepephoneFetcher(Credentials{username:"maxpowel@gmail.com", password:"TD2nWhG6"})
 	//c ,_ := mv.getInternetConsumption("677077536")
@@ -52,8 +52,8 @@ func main() {
 	flag.Parse()
 	color.Green("Starting...")
 	// Dependency injection container
-	f := []func(k *Kernel){apiRestBootstrap}
-	//f := []func(k *Kernel){mqttBootstrap,databaseBootstrap, machineryBootstrap, apiRestBootstrap}
+	//f := []func(k *Kernel){apiRestBootstrap}
+	f := []func(k *Kernel){mqttBootstrap,databaseBootstrap, machineryBootstrap, apiRestBootstrap}
 
 	kernel := newKernel(*configPtr, *parametersPtr, f)
 
