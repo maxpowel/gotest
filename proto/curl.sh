@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#URL=http://localhost:5000/consumption
-URL=http://localhost:5000/task/task_2cbbd5a3-1383-4b69-b109-b4bf5c2f7bb6
+URL=http://localhost:5000/consumption
+#URL=http://localhost:5000/consumption/task_2cbbd5a3-1383-4b69-b109-b4bf5c2f7bb6
 #REQUEST=main.CredentialsProto
 #RESPONSE=main.ErrorProto
 REQUEST=$1

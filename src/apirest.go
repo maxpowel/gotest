@@ -379,8 +379,9 @@ func NewApiRest(k *Kernel, port int) *mux.Router {
 
 	router.Handle("/tarea", Handler{k, GetIndex})
 	router.Handle("/consumption", Handler{k, GetConsumption})
+	router.Handle("/consumption/{taskUid}", Handler{k, GetTaskState})
 	router.Handle("/task/{taskUid}", Handler{k, GetTaskState})
-	//router.Handle("/task/{taskUid}/result", Handler{k, GetTaskResult})
+
 
 
 
