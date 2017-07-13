@@ -14,6 +14,7 @@ import (
 	"github.com/ShaleApps/osinredis"
 	"github.com/jinzhu/gorm"
 	"io/ioutil"
+	"github.com/golang/protobuf/proto"
 )
 
 type ApiRestConfig struct {
@@ -84,8 +85,24 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case Error:
 			// We can retrieve the status here and write out a specific
 			// HTTP status code.
-			fmt.Printf("HTTP %d - %s", e.Status(), e)
-			http.Error(w, e.Error(), e.Status())
+			errorProto := &ErrorProto{
+				Code: int32(e.Status()),
+				Description: e.Error(),
+			}
+
+			data, err := proto.Marshal(errorProto)
+
+			if err != nil {
+				http.Error(w, http.StatusText(http.StatusInternalServerError),
+					http.StatusInternalServerError)
+			}
+
+			//http.Error(w, base64.StdEncoding.EncodeToString(data), e.Status())
+
+			//http.Error(w, "", e.Status())
+
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write(data)
 		default:
 			// Any error types we don't specifically look out for default
 			// to serving a HTTP 500
@@ -186,39 +203,49 @@ func GetConsumption(kernel *Kernel, w http.ResponseWriter, r *http.Request) erro
 	//"alvaro_gg@hotmail.com"
 	//"MBAR4B1"
 
-	buf, _ := ioutil.ReadAll(r.Body)
-	fmt.Println(string(buf))
+	buf, err := ioutil.ReadAll(r.Body)
+	requestData := &CredentialsProto{}
+	err = proto.Unmarshal(buf, requestData)
+	if err != nil {
+		return StatusError{400, err}
+	}
 
-	username := r.Form.Get("username")
+	if len(requestData.Password) == 0{
+		return StatusError{400, fmt.Errorf("Password cannot be blank")}
+	}
+
+	if len(requestData.Username) == 0{
+		return StatusError{400, fmt.Errorf("Username cannot be blank")}
+	}
+	/*username := r.Form.Get("username")
 	password := r.Form.Get("password")
 	username = "alvaro_gg@hotmail.com"
 	password = "MBAR4B1"
 
-	fmt.Println(username)
+	fmt.Println(username)*/
 	// Enviar tarea
 	task0 := tasks.Signature{
 		Name: "consumption",
 		Args: []tasks.Arg{
 			{
 				Type:  "string",
-				Value: username,
+				Value: requestData.Username,
 			},
 			{
 				Type:  "string",
-				Value: password,
+				Value: requestData.Password,
 			},
 		},
 	}
 
-	fmt.Println("Enviando task...")
 	server := kernel.container.MustGet("machinery").(*machinery.Server)
 
 
-	state, err := server.GetBackend().GetState("task_18129669-4f6e-4add-8920-5a57afda9ecf")
+	/*state, err := server.GetBackend().GetState("task_18129669-4f6e-4add-8920-5a57afda9ecf")
 	fmt.Println(state.Results[0].Value)
 
 
-	return nil
+	return nil*/
 
 
 	asyncResult, err := server.SendTask(&task0)
@@ -229,14 +256,39 @@ func GetConsumption(kernel *Kernel, w http.ResponseWriter, r *http.Request) erro
 		// are worth raising a HTTP 500 over vs. which might just be a HTTP
 		// 404, 403 or 401 (as appropriate). It's also clear where our
 		// handler should stop processing by returning early.
-		return StatusError{500, err}
+		return StatusError{400, err}
 	}
 
-	w.Write([]byte(asyncResult.Signature.UUID))
 
-	results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
+	state := TaskState_UNKWNOWN
 
-	fmt.Println(results[0])
+	switch asyncResult.GetState().State {
+		case "PENDING": state = TaskState_PENDING
+		case "RECEIVED": state = TaskState_RECEIVED
+		case "STARTED": state = TaskState_STARTED
+		case "RETRY": state = TaskState_RETRY
+		case "SUCCESS": state = TaskState_SUCCESS
+		case "FAILURE": state = TaskState_FAILURE
+	}
+
+
+	ts := TaskStateResponse{
+		State: state,
+		ETA: 0,
+		Uid: asyncResult.GetState().TaskUUID,
+	}
+
+	data, err := proto.Marshal(&ts)
+
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError),
+			http.StatusInternalServerError)
+	}
+	w.Write(data)
+
+	/*results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
+
+	fmt.Println(results[0])*/
 	/*if err != nil {
 		// We return a status error here, which conveniently wraps the error
 		// returned from our DB queries. We can clearly define which errors
@@ -246,6 +298,47 @@ func GetConsumption(kernel *Kernel, w http.ResponseWriter, r *http.Request) erro
 		return StatusError{404, fmt.Errorf("User not found")}
 	}*/
 
+
+	return nil
+}
+
+func GetTaskState(kernel *Kernel, w http.ResponseWriter, r *http.Request) error {
+	server := kernel.container.MustGet("machinery").(*machinery.Server)
+	//api := kernel.container.MustGet("api").(*mux.Router)
+	vars := mux.Vars(r)
+	taskUid := vars["taskUid"]
+
+	task, err := server.GetBackend().GetState(taskUid)
+	//fmt.Println(task.Results[0].Value)
+
+	if err != nil {
+		return StatusError{http.StatusNotFound, fmt.Errorf("Task not found")}
+	}
+
+	state := TaskState_UNKWNOWN
+
+	switch task.State {
+	case "PENDING": state = TaskState_PENDING
+	case "RECEIVED": state = TaskState_RECEIVED
+	case "STARTED": state = TaskState_STARTED
+	case "RETRY": state = TaskState_RETRY
+	case "SUCCESS": state = TaskState_SUCCESS
+	case "FAILURE": state = TaskState_FAILURE
+	}
+
+
+	ts := TaskStateResponse{
+		State: state,
+		ETA: 0,
+		Uid: task.TaskUUID,
+	}
+
+	data, err := proto.Marshal(&ts)
+
+	if err != nil {
+		return StatusError{http.StatusInternalServerError, err}
+	}
+	w.Write(data)
 
 	return nil
 }
@@ -286,6 +379,8 @@ func NewApiRest(k *Kernel, port int) *mux.Router {
 
 	router.Handle("/tarea", Handler{k, GetIndex})
 	router.Handle("/consumption", Handler{k, GetConsumption})
+	router.Handle("/task/{taskUid}", Handler{k, GetTaskState})
+	//router.Handle("/task/{taskUid}/result", Handler{k, GetTaskResult})
 
 
 

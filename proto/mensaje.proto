@@ -11,3 +11,38 @@ message Respuesta {
 message SetupRequest {
 
 }
+
+message CredentialsProto {
+  string operator = 1;
+  string username = 2;
+  string password = 3;
+}
+
+
+message ErrorProto {
+  int32 code = 1;
+  string description = 2;
+
+}
+enum TaskState {
+  UNKWNOWN = 0;
+  PENDING = 1;
+  RECEIVED = 2;
+  STARTED = 3;
+  RETRY = 4;
+  SUCCESS = 5;
+  FAILURE = 6;
+}
+
+
+
+message TaskStateResponse {
+  TaskState state = 1;
+  int32 ETA = 2;
+  string uid = 3;
+}
+
+message ConsumptionResponseProto {
+  int32 total = 1;
+  int32 consumed = 2;
+}
