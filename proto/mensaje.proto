@@ -43,6 +43,9 @@ message TaskStateResponse {
 }
 
 message ConsumptionResponseProto {
-  int32 total = 1;
-  int32 consumed = 2;
+  uint64 internetTotal = 1;
+  uint64 internetConsumed = 2;
+  uint32 callTotal = 3;
+  uint32 callConsumed = 4;
+  uint32 renewTime = 5;
 }
