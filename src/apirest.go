@@ -15,6 +15,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"io/ioutil"
 	"github.com/golang/protobuf/proto"
+	"github.com/RichardKnop/machinery/v1/backends"
 )
 
 type ApiRestConfig struct {
@@ -196,6 +197,49 @@ func CheckToken(kernel *Kernel, w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+func GetAnonymousConsumption(kernel *Kernel, w http.ResponseWriter, r *http.Request) error {
+	buf, err := ioutil.ReadAll(r.Body)
+	requestData := &AnonymousConsumptionRequest{}
+	err = proto.Unmarshal(buf, requestData)
+	if err != nil {
+		return StatusError{400, err}
+	}
+
+	return nil
+}
+
+func taskResponeHandler(result *backends.AsyncResult) ([]byte, error){
+	state := TaskState_UNKWNOWN
+
+	switch result.GetState().State {
+	case "PENDING": state = TaskState_PENDING
+	case "RECEIVED": state = TaskState_RECEIVED
+	case "STARTED": state = TaskState_STARTED
+	case "RETRY": state = TaskState_RETRY
+	case "SUCCESS": state = TaskState_SUCCESS
+	case "FAILURE": state = TaskState_FAILURE
+	}
+
+
+	ts := TaskStateResponse{
+		State: state,
+		ETA: 0,
+		Uid: result.GetState().TaskUUID,
+	}
+
+	return proto.Marshal(&ts)
+}
+
+func SendTask(kernel *Kernel, task *tasks.Signature) ([]byte, error){
+	server := kernel.container.MustGet("machinery").(*machinery.Server)
+	asyncResult, err := server.SendTask(task)
+	if err != nil {
+		return nil, err
+	}
+
+	return taskResponeHandler(asyncResult)
+}
+
 func GetConsumption(kernel *Kernel, w http.ResponseWriter, r *http.Request) error {
 	//server := kernel.container.MustGet("oauth").(*osin.Server)
 	//database := kernel.container.MustGet("database").(*gorm.DB)
@@ -238,66 +282,11 @@ func GetConsumption(kernel *Kernel, w http.ResponseWriter, r *http.Request) erro
 		},
 	}
 
-	server := kernel.container.MustGet("machinery").(*machinery.Server)
-
-
-	/*state, err := server.GetBackend().GetState("task_18129669-4f6e-4add-8920-5a57afda9ecf")
-	fmt.Println(state.Results[0].Value)
-
-
-	return nil*/
-
-
-	asyncResult, err := server.SendTask(&task0)
-
+	response, err := SendTask(kernel, &task0)
 	if err != nil {
-		// We return a status error here, which conveniently wraps the error
-		// returned from our DB queries. We can clearly define which errors
-		// are worth raising a HTTP 500 over vs. which might just be a HTTP
-		// 404, 403 or 401 (as appropriate). It's also clear where our
-		// handler should stop processing by returning early.
-		return StatusError{400, err}
+		return StatusError{http.StatusInternalServerError, err}
 	}
-
-
-	state := TaskState_UNKWNOWN
-
-	switch asyncResult.GetState().State {
-		case "PENDING": state = TaskState_PENDING
-		case "RECEIVED": state = TaskState_RECEIVED
-		case "STARTED": state = TaskState_STARTED
-		case "RETRY": state = TaskState_RETRY
-		case "SUCCESS": state = TaskState_SUCCESS
-		case "FAILURE": state = TaskState_FAILURE
-	}
-
-
-	ts := TaskStateResponse{
-		State: state,
-		ETA: 0,
-		Uid: asyncResult.GetState().TaskUUID,
-	}
-
-	data, err := proto.Marshal(&ts)
-
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError),
-			http.StatusInternalServerError)
-	}
-	w.Write(data)
-
-	/*results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
-
-	fmt.Println(results[0])*/
-	/*if err != nil {
-		// We return a status error here, which conveniently wraps the error
-		// returned from our DB queries. We can clearly define which errors
-		// are worth raising a HTTP 500 over vs. which might just be a HTTP
-		// 404, 403 or 401 (as appropriate). It's also clear where our
-		// handler should stop processing by returning early.
-		return StatusError{404, fmt.Errorf("User not found")}
-	}*/
-
+	w.Write(response)
 
 	return nil
 }
@@ -378,6 +367,7 @@ func NewApiRest(k *Kernel, port int) *mux.Router {
 	fmt.Println("Escuchando en puerto ", port)
 
 	router.Handle("/tarea", Handler{k, GetIndex})
+	router.Handle("/anonymousConsumption", Handler{k, GetAnonymousConsumption})
 	router.Handle("/consumption", Handler{k, GetConsumption})
 	router.Handle("/consumption/{taskUid}", Handler{k, GetTaskState})
 	router.Handle("/task/{taskUid}", Handler{k, GetTaskState})

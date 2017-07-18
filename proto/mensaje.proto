@@ -7,11 +7,6 @@ message Respuesta {
   int32 status_code = 2;
 }
 
-
-message SetupRequest {
-
-}
-
 message CredentialsProto {
   string operator = 1;
   string username = 2;
@@ -43,9 +38,15 @@ message TaskStateResponse {
 }
 
 message ConsumptionResponseProto {
-  uint64 internetTotal = 1;
-  uint64 internetConsumed = 2;
-  uint32 callTotal = 3;
-  uint32 callConsumed = 4;
-  uint32 renewTime = 5;
+  int64 internetTotal = 1;
+  int64 internetConsumed = 2;
+  int32 callTotal = 3;
+  int32 callConsumed = 4;
+  int32 renewTime = 5;
+}
+
+message AnonymousConsumptionRequest {
+  string deviceId = 1;
+  CredentialsProto credentials = 2;
+
 }
