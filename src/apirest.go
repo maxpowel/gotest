@@ -5,49 +5,22 @@ import (
 	"github.com/fatih/color"
 	"net/http"
 	"github.com/gorilla/mux"
-
 	"github.com/RangelReale/osin"
-	"time"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/RichardKnop/machinery/v1"
 	"github.com/garyburd/redigo/redis"
 	"github.com/ShaleApps/osinredis"
-	"github.com/jinzhu/gorm"
-	"io/ioutil"
 	"github.com/golang/protobuf/proto"
 	"github.com/RichardKnop/machinery/v1/backends"
+	"github.com/ulule/deepcopier"
+	"io/ioutil"
+	"gopkg.in/go-playground/validator.v9"
+
 )
 
 type ApiRestConfig struct {
 	Port int
 }
-
-
-func Index(w http.ResponseWriter, r *http.Request) {
-
-	fmt.Fprintln(w, "Welcome!")
-}
-
-func TodoIndex(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "Todo Index!")
-}
-
-func TodoShow(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	todoId := vars["todoId"]
-	fmt.Fprintln(w, "Todo show:", todoId)
-}
-
-func Index2(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("COSA","ALGO")
-	fmt.Println(r.Header.Get("token"))
-	w.WriteHeader(34)
-
-	fmt.Fprintln(w, "Welcome!")
-
-}
-
-
 
 
 // Error represents a handler error. It provides methods for a HTTP status
@@ -78,6 +51,14 @@ type Handler struct {
 	H func(k *Kernel, w http.ResponseWriter, r *http.Request) error
 }
 
+func getBody(protoMessage proto.Message, r *http.Request) (error){
+	buf, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	return proto.Unmarshal(buf, protoMessage)
+
+}
 // ServeHTTP allows our Handler type to satisfy http.Handler.
 func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err := h.H(h.Kernel, w, r)
@@ -98,11 +79,8 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					http.StatusInternalServerError)
 			}
 
-			//http.Error(w, base64.StdEncoding.EncodeToString(data), e.Status())
-
-			//http.Error(w, "", e.Status())
-
 			w.WriteHeader(http.StatusBadRequest)
+			// Raw binary data is sent
 			w.Write(data)
 		default:
 			// Any error types we don't specifically look out for default
@@ -113,101 +91,8 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetIndex(kernel *Kernel, w http.ResponseWriter, r *http.Request) error {
 
-	fmt.Println("EL OTRO HILO")
-
-	// Enviar tarea
-	task0 := tasks.Signature{
-		Name: "add",
-		Args: []tasks.Arg{
-			{
-				Type:  "int64",
-				Value: 1,
-			},
-			{
-				Type:  "int64",
-				Value: 1,
-			},
-		},
-	}
-
-	fmt.Println("Enviando task...")
-	server := kernel.container.MustGet("machinery").(*machinery.Server)
-	asyncResult, err := server.SendTask(&task0)
-
-	if err != nil {
-		// We return a status error here, which conveniently wraps the error
-		// returned from our DB queries. We can clearly define which errors
-		// are worth raising a HTTP 500 over vs. which might just be a HTTP
-		// 404, 403 or 401 (as appropriate). It's also clear where our
-		// handler should stop processing by returning early.
-		return StatusError{500, err}
-	}
-
-	w.Write([]byte(asyncResult.Signature.UUID))
-
-	results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
-	if err != nil {
-		fmt.Println("Getting task result failed with error: %s", err.Error())
-	}
-	fmt.Printf(
-		"%v + %v = %v\n",
-		asyncResult.Signature.Args[0].Value,
-		asyncResult.Signature.Args[1].Value,
-		results[0].Interface(),
-	)
-
-
-	return nil
-}
-
-func CheckToken(kernel *Kernel, w http.ResponseWriter, r *http.Request) error {
-	server := kernel.container.MustGet("oauth").(*osin.Server)
-	database := kernel.container.MustGet("database").(*gorm.DB)
-
-	resp := server.NewResponse()
-	defer resp.Close()
-	fmt.Println("CERO")
-	var err error
-	if ar := server.HandleAccessRequest(resp, r); ar != nil {
-		username := r.Form.Get("username")
-		password := r.Form.Get("password")
-		user := User{}
-		database.Where("username = ?", username).First(&user)
-		err = checkPassword(&user, password)
-		ar.Authorized = err == nil
-		if ar.Authorized {
-			ar.UserData = user.ID
-		}
-		server.FinishAccessRequest(resp, r, ar)
-	}
-	osin.OutputJSON(resp, w, r)
-
-	/*if err != nil {
-		// We return a status error here, which conveniently wraps the error
-		// returned from our DB queries. We can clearly define which errors
-		// are worth raising a HTTP 500 over vs. which might just be a HTTP
-		// 404, 403 or 401 (as appropriate). It's also clear where our
-		// handler should stop processing by returning early.
-		return StatusError{404, fmt.Errorf("User not found")}
-	}*/
-
-
-	return nil
-}
-
-func GetAnonymousConsumption(kernel *Kernel, w http.ResponseWriter, r *http.Request) error {
-	buf, err := ioutil.ReadAll(r.Body)
-	requestData := &AnonymousConsumptionRequest{}
-	err = proto.Unmarshal(buf, requestData)
-	if err != nil {
-		return StatusError{400, err}
-	}
-
-	return nil
-}
-
+// Format task information. Used everytime your controller runs a task
 func taskResponeHandler(result *backends.AsyncResult) ([]byte, error){
 	state := TaskState_UNKWNOWN
 
@@ -230,7 +115,8 @@ func taskResponeHandler(result *backends.AsyncResult) ([]byte, error){
 	return proto.Marshal(&ts)
 }
 
-func SendTask(kernel *Kernel, task *tasks.Signature) ([]byte, error){
+// Shortcut to launch a task
+func sendTask(kernel *Kernel, task *tasks.Signature) ([]byte, error){
 	server := kernel.container.MustGet("machinery").(*machinery.Server)
 	asyncResult, err := server.SendTask(task)
 	if err != nil {
@@ -240,98 +126,20 @@ func SendTask(kernel *Kernel, task *tasks.Signature) ([]byte, error){
 	return taskResponeHandler(asyncResult)
 }
 
-func GetConsumption(kernel *Kernel, w http.ResponseWriter, r *http.Request) error {
-	//server := kernel.container.MustGet("oauth").(*osin.Server)
-	//database := kernel.container.MustGet("database").(*gorm.DB)
 
-	//"alvaro_gg@hotmail.com"
-	//"MBAR4B1"
+// Validate input data against a model
+func validate(data interface{}, validatorI interface{}) (*interface{}, error) {
+	var validate *validator.Validate
+	validate = validator.New()
 
-	buf, err := ioutil.ReadAll(r.Body)
-	requestData := &CredentialsProto{}
-	err = proto.Unmarshal(buf, requestData)
-	if err != nil {
-		return StatusError{400, err}
-	}
 
-	if len(requestData.Password) == 0{
-		return StatusError{400, fmt.Errorf("Password cannot be blank")}
-	}
-
-	if len(requestData.Username) == 0{
-		return StatusError{400, fmt.Errorf("Username cannot be blank")}
-	}
-	/*username := r.Form.Get("username")
-	password := r.Form.Get("password")
-	username = "alvaro_gg@hotmail.com"
-	password = "MBAR4B1"
-
-	fmt.Println(username)*/
-	// Enviar tarea
-	task0 := tasks.Signature{
-		Name: "consumption",
-		Args: []tasks.Arg{
-			{
-				Type:  "string",
-				Value: requestData.Username,
-			},
-			{
-				Type:  "string",
-				Value: requestData.Password,
-			},
-		},
-	}
-
-	response, err := SendTask(kernel, &task0)
-	if err != nil {
-		return StatusError{http.StatusInternalServerError, err}
-	}
-	w.Write(response)
-
-	return nil
+	deepcopier.Copy(data).To(validatorI)
+	err := validate.Struct(validatorI)
+	//_, err := govalidator.ValidateStruct(validator)
+	return &validatorI, err
 }
 
-func GetTaskState(kernel *Kernel, w http.ResponseWriter, r *http.Request) error {
-	server := kernel.container.MustGet("machinery").(*machinery.Server)
-	//api := kernel.container.MustGet("api").(*mux.Router)
-	vars := mux.Vars(r)
-	taskUid := vars["taskUid"]
-
-	task, err := server.GetBackend().GetState(taskUid)
-	//fmt.Println(task.Results[0].Value)
-
-	if err != nil {
-		return StatusError{http.StatusNotFound, fmt.Errorf("Task not found")}
-	}
-
-	state := TaskState_UNKWNOWN
-
-	switch task.State {
-	case "PENDING": state = TaskState_PENDING
-	case "RECEIVED": state = TaskState_RECEIVED
-	case "STARTED": state = TaskState_STARTED
-	case "RETRY": state = TaskState_RETRY
-	case "SUCCESS": state = TaskState_SUCCESS
-	case "FAILURE": state = TaskState_FAILURE
-	}
-
-
-	ts := TaskStateResponse{
-		State: state,
-		ETA: 0,
-		Uid: task.TaskUUID,
-	}
-
-	data, err := proto.Marshal(&ts)
-
-	if err != nil {
-		return StatusError{http.StatusInternalServerError, err}
-	}
-	w.Write(data)
-
-	return nil
-}
-
+// TODO MOVER a un sitio correcto
 func NewRedisStorage() (*osinredis.Storage){
 	pool := &redis.Pool{
 		Dial: func() (redis.Conn, error) {
@@ -357,23 +165,11 @@ func NewOAuthServer(k *Kernel) *osin.Server {
 	oauthConfig.AllowedAccessTypes = osin.AllowedAccessType{osin.PASSWORD}
 	return osin.NewServer(oauthConfig, NewRedisStorage())
 }
+
 func NewApiRest(k *Kernel, port int) *mux.Router {
 
 	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/", Index)
-	router.HandleFunc("/todos", TodoIndex)
-	router.HandleFunc("/todos/{todoId}", TodoShow)
-	router.Methods("PUT").Path("/este").Name("este").HandlerFunc(Index2)
-	fmt.Println("Escuchando en puerto ", port)
-
-	router.Handle("/tarea", Handler{k, GetIndex})
-	router.Handle("/anonymousConsumption", Handler{k, GetAnonymousConsumption})
-	router.Handle("/consumption", Handler{k, GetConsumption})
-	router.Handle("/consumption/{taskUid}", Handler{k, GetTaskState})
-	router.Handle("/task/{taskUid}", Handler{k, GetTaskState})
-
-
-
+	registerControllers(k, router)
 
 
 	k.container.RegisterType("oauth", NewOAuthServer, k)
@@ -416,7 +212,7 @@ func NewApiRest(k *Kernel, port int) *mux.Router {
 	router.Handle("/token", Handler{k, CheckToken})
 
 	go http.ListenAndServe(fmt.Sprintf(":%v", port), router)
-
+	fmt.Println("Escuchando en puerto ", port)
 
 	return router
 }

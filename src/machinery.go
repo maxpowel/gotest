@@ -28,11 +28,28 @@ func Add(args ...int64) (int64, error) {
 	return sum, nil
 }
 
-func GetConsumptionTask(username string, password string) (int64, error){
-	mv := NewMasMovilFetcher(Credentials{username: username, password: password})
-	//mv := NewPepephoneFetcher(Credentials{username:"maxpowel@gmail.com", password:"TD2nWhG6"})
-	c , err := mv.getInternetConsumption("677077536")
-	return c.consumed, err
+func GetConsumptionTask(username string, password string, operator string) (int64, error){
+	if operator == "masmovil" {
+		mv := NewMasMovilFetcher(Credentials{username: username, password: password})
+		//mv := NewPepephoneFetcher(Credentials{username:"maxpowel@gmail.com", password:"TD2nWhG6"})
+		c, err := mv.getInternetConsumption("677077536")
+		return c.consumed, err
+	}
+
+	return 0, fmt.Errorf("Operator \"%v\" not available", operator)
+
+}
+
+func GetAnonymousConsumptionTask(username string, password string, operator string, deviceId string) (int64, error){
+	if operator == "masmovil" {
+		mv := NewMasMovilFetcher(Credentials{username: username, password: password})
+		//mv := NewPepephoneFetcher(Credentials{username:"maxpowel@gmail.com", password:"TD2nWhG6"})
+		c, err := mv.getInternetConsumption("677077536")
+		return c.consumed, err
+	}
+
+	return 0, fmt.Errorf("Operator \"%v\" not available", operator)
+
 }
 
 func machineryBootstrap(k *Kernel) {
@@ -71,6 +88,7 @@ func machineryBootstrap(k *Kernel) {
 		taskList := map[string]interface{}{
 			"add":        Add,
 			"consumption": GetConsumptionTask,
+			"anonymousConsumption": GetAnonymousConsumption,
 		}
 		err = server.RegisterTasks(taskList)
 
