@@ -1,10 +1,13 @@
-package main
+package dislet_machinery
 
 import (
 	"github.com/fatih/color"
 	"github.com/RichardKnop/machinery/v1"
 	"fmt"
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/jinzhu/gorm"
+	"time"
+	"github.com/maxpowel/dislet"
 )
 
 type MachineryConfig struct {
@@ -12,6 +15,28 @@ type MachineryConfig struct {
 	ResultBackend string `default:"PUERTOOO"`
 	DefaultQueue string
 }
+
+type UserConsumption struct {
+	gorm.Model
+	InternetTotal uint
+	InternetConsumed uint
+	CallTotal uint
+	CallConsumed uint
+	RenewTime time.Time
+}
+
+type UserDevice struct {
+	gorm.Model
+	Uuid uint
+
+}
+
+type Device struct {
+	gorm.Model
+	Uuid uint
+
+}
+
 
 /*func NewConnection(dialect string, uri string) *gorm.DB {
 	db, _ := gorm.Open(dialect, uri)
@@ -52,13 +77,13 @@ func GetAnonymousConsumptionTask(username string, password string, operator stri
 
 }
 
-func machineryBootstrap(k *Kernel) {
+func machineryBootstrap(k *dislet.Kernel) {
 	//fmt.Println("DATABASE BOOT")
-	mapping := k.config.mapping
+	mapping := k.Config.Mapping
 	mapping["machinery"] = &MachineryConfig{}
-	var baz OnKernelReady = func(k *Kernel){
+	var baz dislet.OnKernelReady = func(k *dislet.Kernel){
 		color.Green("Evento en machinery")
-		machineryConfig := k.config.mapping["machinery"].(*MachineryConfig)
+		machineryConfig := k.Config.Mapping["machinery"].(*MachineryConfig)
 		fmt.Println(machineryConfig)
 
 		var cnf = config.Config{
@@ -102,15 +127,15 @@ func machineryBootstrap(k *Kernel) {
 
 		go runWorker(server)
 
-		//k.container.RegisterType("database", NewConnection, conf.Dialect, conf.Uri)
+		//k.Container.RegisterType("database", NewConnection, conf.Dialect, conf.Uri)
 		iny := func() *machinery.Server{
 			return server
 		}
-		k.container.RegisterType("machinery", iny)
+		k.Container.RegisterType("machinery", iny)
 
 
 	}
-	k.subscribe(baz)
+	k.Subscribe(baz)
 
 
 

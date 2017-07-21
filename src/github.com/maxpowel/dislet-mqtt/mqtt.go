@@ -1,4 +1,4 @@
-package main
+package dislet_mqtt
 
 import (
 	"github.com/golang/protobuf/proto"
@@ -9,6 +9,7 @@ import (
 	"time"
 	"github.com/jinzhu/gorm"
 	"github.com/fatih/color"
+	"github.com/maxpowel/dislet"
 )
 
 type MqttConfig struct {
@@ -24,14 +25,14 @@ type PlayList struct {
 }
 
 
-func mqttBootstrap(k *Kernel) {
-	mapping := k.config.mapping
+func MqttBootstrap(k *dislet.Kernel) {
+	mapping := k.Config.Mapping
 	mapping["mqtt"] = &MqttConfig{}
 
-	var baz OnKernelReady = func(k *Kernel){
+	var baz dislet.OnKernelReady = func(k *dislet.Kernel){
 		color.Green("Evento %v en mqtt")
-		conf := k.config.mapping["mqtt"].(*MqttConfig)
-		//conf = k.config.mapping["mqtt"]
+		conf := k.Config.Mapping["mqtt"].(*MqttConfig)
+		//conf = k.Config.mapping["mqtt"]
 		// Start mqtt connection
 		//opts := mqtt.NewClientOptions().AddBroker("tcp://iot.eclipse.org:1883").SetClientID("gotrivial")
 		fmt.Println(fmt.Sprintf("tcp://%v:%v", conf.Hostname, conf.Port))
@@ -63,7 +64,7 @@ func mqttBootstrap(k *Kernel) {
 					log.Fatal("unmarshaling error: ", err)
 				}
 				//db.Create(&PlayList{Source: newTest.Message, SourceType: string(newTest.StatusCode)})
-				db2 := k.container.MustGet("database").(*gorm.DB)
+				db2 := k.Container.MustGet("database").(*gorm.DB)
 				//db := container.MustGet("gorm").(gorm.DB)
 				db2.Create(&PlayList{Source: "AAA", SourceType: "BBB"})
 				color.Blue("MSG: %s\n", newTest.Message)
@@ -125,7 +126,7 @@ func mqttBootstrap(k *Kernel) {
 		}
 		go service()
 	}
-	k.subscribe(baz)
+	k.Subscribe(baz)
 
 
 }

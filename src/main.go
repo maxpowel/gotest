@@ -11,6 +11,7 @@ import (
 	"github.com/fatih/color"
 	"flag"
 
+	"github.com/maxpowel/dislet"
 )
 
 //////////////
@@ -20,8 +21,8 @@ import (
 
 
 func main() {
-	u := NewUser()
-	PlainPassword(&u, "123456")
+	//u := NewUser()
+	//PlainPassword(&u, "123456")
 // mirar esto https://stackoverflow.com/questions/33646948/go-using-mux-router-how-to-pass-my-db-to-my-handlers
 
 	/*db := NewConnection("mysql", "mqtt:123456@tcp(localhost:3306)/mqtt?charset=utf8&parseTime=true")
@@ -54,12 +55,12 @@ func main() {
 	flag.Parse()
 	color.Green("Starting...")
 	// Dependency injection container
-	//f := []func(k *Kernel){apiRestBootstrap}
-	f := []func(k *Kernel){mqttBootstrap,databaseBootstrap, machineryBootstrap, apiRestBootstrap}
+	//f := []func(k *dislet.Kernel){apiRestBootstrap}
+	f := []func(k *dislet.Kernel){mqttBootstrap,databaseBootstrap, machineryBootstrap, apiRestBootstrap}
 
-	kernel := newKernel(*configPtr, *parametersPtr, f)
+	kernel := dislet.NewKernel(*configPtr, *parametersPtr, f)
 
-	fmt.Println(kernel.config.mapping)
+	fmt.Println(kernel.Config.Mapping)
 
 
 	//db2 := container.MustGet("database").(*gorm.DB)
@@ -88,7 +89,7 @@ func main() {
 	}
 
 	fmt.Println("Enviando task...")
-	server := kernel.container.MustGet("machinery").(*machinery.Server)
+	server := kernel.Container.MustGet("machinery").(*machinery.Server)
 	asyncResult, err := server.SendTask(&task0)
 	if err != nil {
 		fmt.Println("Could not send task: %s", err.Error())
@@ -110,23 +111,6 @@ func main() {
 	daemonize()
 }
 
-func daemonize(){
-	// Daemonize
-	sigs := make(chan os.Signal, 1)
-	done := make(chan bool, 1)
-
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		sig := <-sigs
-		color.Yellow("Interrupt \"%v\" received, exiting", sig)
-
-		done <- true
-	}()
-
-	<-done
-
-}
 
 
 /*

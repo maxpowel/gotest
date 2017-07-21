@@ -1,9 +1,10 @@
-package main
+package dislet_gorm
 
 import (
 	"fmt"
 	"github.com/jinzhu/gorm"
 	"github.com/fatih/color"
+	"github.com/maxpowel/dislet"
 )
 
 type DatabaseConfig struct {
@@ -26,17 +27,17 @@ func NewConnection(dialect string, uri string) *gorm.DB {
 }
 
 
-func databaseBootstrap(k *Kernel) {
+func databaseBootstrap(k *dislet.Kernel) {
 	//fmt.Println("DATABASE BOOT")
-	mapping := k.config.mapping
+	mapping := k.Config.Mapping
 	mapping["database"] = &DatabaseConfig{}
 
-	var baz OnKernelReady = func(k *Kernel){
+	var baz dislet.OnKernelReady = func(k *dislet.Kernel){
 		color.Green("Evento en database")
-		conf := k.config.mapping["database"].(*DatabaseConfig)
-		k.container.RegisterType("database", NewConnection, conf.Dialect, conf.Uri)
+		conf := k.Config.Mapping["database"].(*DatabaseConfig)
+		k.Container.RegisterType("database", NewConnection, conf.Dialect, conf.Uri)
 	}
-	k.subscribe(baz)
+	k.Subscribe(baz)
 
 
 

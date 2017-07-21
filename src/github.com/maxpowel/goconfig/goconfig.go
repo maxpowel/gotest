@@ -1,4 +1,5 @@
-package main
+package goconfig
+
 
 import (
 	"io/ioutil"
@@ -20,13 +21,13 @@ type ConfigurationParameters struct {
 }
 
 type Config struct {
-	mapping map[string]interface{}
-	configFilePath string
-	parametersFilePath string
+	Mapping map[string]interface{}
+	ConfigFilePath string
+	ParametersFilePath string
 }
 
-func (c Config) load() {
-	_, err := load(c.configFilePath, c.parametersFilePath, c.mapping)
+func (c *Config) Load() {
+	_, err := load(c.ConfigFilePath, c.ParametersFilePath, c.Mapping)
 	if err != nil{
 		log.Fatal(err)
 	}
@@ -34,9 +35,9 @@ func (c Config) load() {
 
 
 func NewConfig(configPath, parametersPath string) *Config {
-	c := Config{mapping: make(map[string]interface{})}
-	c.configFilePath = configPath
-	c.parametersFilePath = parametersPath
+	c := Config{Mapping: make(map[string]interface{})}
+	c.ConfigFilePath = configPath
+	c.ParametersFilePath = parametersPath
 	return &c
 }
 
