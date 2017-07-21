@@ -1,4 +1,4 @@
-package dislet_machinery
+package machinery
 
 import (
 	"github.com/fatih/color"
@@ -8,9 +8,10 @@ import (
 	"github.com/jinzhu/gorm"
 	"time"
 	"github.com/maxpowel/dislet"
+
 )
 
-type MachineryConfig struct {
+type Config struct {
 	Broker string `default:"valor"`
 	ResultBackend string `default:"PUERTOOO"`
 	DefaultQueue string
@@ -77,19 +78,19 @@ func GetAnonymousConsumptionTask(username string, password string, operator stri
 
 }
 
-func machineryBootstrap(k *dislet.Kernel) {
+func Bootstrap(k *dislet.Kernel) {
 	//fmt.Println("DATABASE BOOT")
 	mapping := k.Config.Mapping
-	mapping["machinery"] = &MachineryConfig{}
+	mapping["machinery"] = &Config{}
 	var baz dislet.OnKernelReady = func(k *dislet.Kernel){
 		color.Green("Evento en machinery")
-		machineryConfig := k.Config.Mapping["machinery"].(*MachineryConfig)
-		fmt.Println(machineryConfig)
+		mConfig := k.Config.Mapping["machinery"].(*Config)
+		fmt.Println(mConfig)
 
 		var cnf = config.Config{
-			Broker: machineryConfig.Broker,
-			ResultBackend: machineryConfig.ResultBackend,
-			DefaultQueue: machineryConfig.DefaultQueue,
+			Broker: mConfig.Broker,
+			ResultBackend: mConfig.ResultBackend,
+			DefaultQueue: mConfig.DefaultQueue,
 			//Broker : "redis://localhost:6379/0",
 			//ResultBackend: "redis://localhost:6379/0",
 			//Broker:             "amqp://guest:guest@localhost:5672/",

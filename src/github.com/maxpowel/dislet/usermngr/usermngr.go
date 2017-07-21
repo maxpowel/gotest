@@ -1,4 +1,4 @@
-package main
+package user
 
 import (
 	"github.com/jinzhu/gorm"
@@ -41,7 +41,7 @@ func PlainPassword(user *User, plainPassword string) (error){
 	return nil
 }
 
-func checkPassword(user *User, plainPassword string) (error) {
+func CheckPassword(user *User, plainPassword string) (error) {
 	salt, err := base64.URLEncoding.DecodeString(user.Salt)
 	if err != nil {
 		return err

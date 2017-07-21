@@ -1,4 +1,4 @@
-package dislet_gorm
+package gorm
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"github.com/maxpowel/dislet"
 )
 
-type DatabaseConfig struct {
+type Config struct {
 	Dialect string `default:"valor"`
 	Uri string `default:"PUERTOOO"`
 }
@@ -27,14 +27,14 @@ func NewConnection(dialect string, uri string) *gorm.DB {
 }
 
 
-func databaseBootstrap(k *dislet.Kernel) {
+func Bootstrap(k *dislet.Kernel) {
 	//fmt.Println("DATABASE BOOT")
 	mapping := k.Config.Mapping
-	mapping["database"] = &DatabaseConfig{}
+	mapping["database"] = &Config{}
 
 	var baz dislet.OnKernelReady = func(k *dislet.Kernel){
 		color.Green("Evento en database")
-		conf := k.Config.Mapping["database"].(*DatabaseConfig)
+		conf := k.Config.Mapping["database"].(*Config)
 		k.Container.RegisterType("database", NewConnection, conf.Dialect, conf.Uri)
 	}
 	k.Subscribe(baz)

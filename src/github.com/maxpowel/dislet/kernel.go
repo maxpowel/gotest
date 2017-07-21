@@ -4,9 +4,10 @@ import (
 	"github.com/fgrosse/goldi"
 	"github.com/fgrosse/goldi/validation"
 	"github.com/maxpowel/goconfig"
-
+    "os"
 	"os/signal"
 	"syscall"
+	"github.com/fatih/color"
 )
 
 type Kernel struct {
@@ -59,7 +60,7 @@ func NewKernel(configPath, paramsPath string, bootstrapModules []func(k *Kernel)
 }
 
 
-func daemonize(){
+func Daemonize(){
 	// Daemonize
 	sigs := make(chan os.Signal, 1)
 	done := make(chan bool, 1)

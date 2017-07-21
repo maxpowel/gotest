@@ -1,16 +1,12 @@
 package main
 import "fmt"
-import "os"
 import (
 
-	"os/signal"
-	"syscall"
-
-	//_ "github.com/jinzhu/gorm/dialects/sqlite"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/fatih/color"
 	"flag"
-
+	"github.com/maxpowel/dislet/machinery"
+	"github.com/maxpowel/dislet/database/gorm"
+	"github.com/maxpowel/dislet/mqtt"
 	"github.com/maxpowel/dislet"
 )
 
@@ -48,7 +44,6 @@ func main() {
 	// The second argument is a consumer tag
 	// Ideally, each worker should have a unique tag (worker1, worker2 etc)
 
-
 	// Parse parameters
 	configPtr := flag.String("config", "config.yml", "Configuration file")
 	parametersPtr := flag.String("parameters", "parameters.yml", "Parameters file")
@@ -56,7 +51,7 @@ func main() {
 	color.Green("Starting...")
 	// Dependency injection container
 	//f := []func(k *dislet.Kernel){apiRestBootstrap}
-	f := []func(k *dislet.Kernel){mqttBootstrap,databaseBootstrap, machineryBootstrap, apiRestBootstrap}
+	f := []func(k *dislet.Kernel){mqtt.Bootstrap,gorm.Bootstrap, machinery.Bootstrap, apiRestBootstrap}
 
 	kernel := dislet.NewKernel(*configPtr, *parametersPtr, f)
 
@@ -108,7 +103,7 @@ func main() {
 		results[0].Interface(),
 	)
 */
-	daemonize()
+	dislet.Daemonize()
 }
 
 

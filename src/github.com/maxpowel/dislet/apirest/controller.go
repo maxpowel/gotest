@@ -1,4 +1,4 @@
-package main
+package apirest
 
 import (
 	"net/http"
@@ -12,6 +12,8 @@ import (
 	"github.com/jinzhu/gorm"
 	"io/ioutil"
 	"github.com/maxpowel/dislet"
+	"github.com/maxpowel/dislet/usermngr"
+
 )
 
 type CredentialsValidator struct {
@@ -200,9 +202,9 @@ func CheckToken(kernel *dislet.Kernel, w http.ResponseWriter, r *http.Request) e
 	if ar := server.HandleAccessRequest(resp, r); ar != nil {
 		username := r.Form.Get("username")
 		password := r.Form.Get("password")
-		user := User{}
+		user := usermngr.User{}
 		database.Where("username = ?", username).First(&user)
-		err = checkPassword(&user, password)
+		err = user.CheckPassword(&user, password)
 		ar.Authorized = err == nil
 		if ar.Authorized {
 			ar.UserData = user.ID

@@ -1,4 +1,4 @@
-package main
+package apirest
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ import (
 
 )
 
-type ApiRestConfig struct {
+type Config struct {
 	Port int
 }
 
@@ -210,7 +210,7 @@ func NewApiRest(k *dislet.Kernel, port int) *mux.Router {
 //authorize?response_type=code&client_id=1234&redirect_uri=http%3A%2F%2Flocalhost%3A14000%2Fappauth%2Fcode
 //curl 'http://localhost:8090/token' -d 'grant_type=password&username=pepe&password=21212&client_id=pepe' -H 'Authorization: Basic cGVwZTpsb2xhem8='
 	// Access token endpoint
-	router.Handle("/token", Handler{k, CheckToken})
+	//router.Handle("/token", Handler{k, CheckToken})
 
 	go http.ListenAndServe(fmt.Sprintf(":%v", port), router)
 	fmt.Println("Escuchando en puerto ", port)
@@ -222,11 +222,11 @@ func NewApiRest(k *dislet.Kernel, port int) *mux.Router {
 func apiRestBootstrap(k *dislet.Kernel) {
 	//fmt.Println("DATABASE BOOT")
 	mapping := k.Config.Mapping
-	mapping["api"] = &ApiRestConfig{}
+	mapping["api"] = &Config{}
 
 	var baz dislet.OnKernelReady = func(k *dislet.Kernel){
 		color.Green("Evento en api")
-		conf := k.Config.Mapping["api"].(*ApiRestConfig)
+		conf := k.Config.Mapping["api"].(*Config)
 		k.Container.RegisterType("api", NewApiRest, k, conf.Port)
 		k.Container.MustGet("api")
 

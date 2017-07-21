@@ -1,4 +1,4 @@
-package dislet_mqtt
+package mqtt
 
 import (
 	"github.com/golang/protobuf/proto"
@@ -25,7 +25,7 @@ type PlayList struct {
 }
 
 
-func MqttBootstrap(k *dislet.Kernel) {
+func Bootstrap(k *dislet.Kernel) {
 	mapping := k.Config.Mapping
 	mapping["mqtt"] = &MqttConfig{}
 
@@ -44,31 +44,12 @@ func MqttBootstrap(k *dislet.Kernel) {
 			var f mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 				msg.Topic()
 				color.Blue("TOPIC: %s\n", msg.Topic())
-				/*switch msg.Topic() {
+				switch msg.Topic() {
 				case "setup":
-
-			}*/
-				fmt.Println("BIEEN")
-				return
-				newTest := &Respuesta{}
-				/*db, err := gorm.Open("mysql", "mqtt:123456@tcp(localhost:3306)/mqtt?charset=utf8&parseTime=true")
-			// Migrate the schema
-			db.AutoMigrate(&PlayList{})
-			if err != nil {
-				panic("failed to connect database")
-			}
-			defer db.Close()*/
-
-				err := proto.Unmarshal(msg.Payload(), newTest)
-				if err != nil {
-					log.Fatal("unmarshaling error: ", err)
 				}
-				//db.Create(&PlayList{Source: newTest.Message, SourceType: string(newTest.StatusCode)})
-				db2 := k.Container.MustGet("database").(*gorm.DB)
-				//db := container.MustGet("gorm").(gorm.DB)
-				db2.Create(&PlayList{Source: "AAA", SourceType: "BBB"})
-				color.Blue("MSG: %s\n", newTest.Message)
+
 			}
+
 			opts.SetDefaultPublishHandler(f)
 			opts.SetPingTimeout(1 * time.Second)
 
@@ -95,38 +76,9 @@ func MqttBootstrap(k *dislet.Kernel) {
 				unsubscribeToken.Wait()
 			}()
 
-			test := &Respuesta{
-				Message:    "tuvieja",
-				StatusCode: 24,
-			}
-
-			data, err := proto.Marshal(test)
-
-			fmt.Println(data)
-			if err != nil {
-				log.Fatal("marshaling error: ", err)
-			}
-			ioutil.WriteFile("mensaje", data, 0644)
-
-			/*b, err := json.Marshal(group)
-		if err != nil {
-			fmt.Println("error:", err)
-		}
-
-		os.Stdout.Write(b)*/
-
-			/*for i := 0; i < 5; i++ {
-			text := fmt.Sprintf("this is msg #%d!", i)
-			token := c.Publish("go-mqtt/sample", 0, false, text)
-			token.Wait()
-		}*/
-
-			//time.Sleep(6 * time.Second)
-			daemonize()
+			dislet.Daemonize()
 		}
 		go service()
 	}
 	k.Subscribe(baz)
-
-
 }
