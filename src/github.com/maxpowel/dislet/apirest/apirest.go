@@ -1,4 +1,4 @@
-package main
+package apirest
 
 import (
 	"fmt"
@@ -15,10 +15,11 @@ import (
 	"github.com/ulule/deepcopier"
 	"io/ioutil"
 	"gopkg.in/go-playground/validator.v9"
+	"github.com/maxpowel/dislet"
 
 )
 
-type ApiRestConfig struct {
+type Config struct {
 	Port int
 }
 
@@ -47,8 +48,8 @@ func (se StatusError) Status() int {
 }
 
 type Handler struct {
-	*Kernel
-	H func(k *Kernel, w http.ResponseWriter, r *http.Request) error
+	*dislet.Kernel
+	H func(k *dislet.Kernel, w http.ResponseWriter, r *http.Request) error
 }
 
 func getBody(protoMessage proto.Message, r *http.Request) (error){
@@ -116,8 +117,8 @@ func taskResponseHandler(result *backends.AsyncResult) ([]byte, error){
 }
 
 // Shortcut to launch a task
-func sendTask(kernel *Kernel, task *tasks.Signature) ([]byte, error){
-	server := kernel.container.MustGet("machinery").(*machinery.Server)
+func sendTask(kernel *dislet.Kernel, task *tasks.Signature) ([]byte, error){
+	server := kernel.Container.MustGet("machinery").(*machinery.Server)
 	asyncResult, err := server.SendTask(task)
 	if err != nil {
 		return nil, err
@@ -160,20 +161,20 @@ func NewRedisStorage() (*osinredis.Storage){
 	return storage
 }
 
-func NewOAuthServer(k *Kernel) *osin.Server {
+func NewOAuthServer(k *dislet.Kernel) *osin.Server {
 	oauthConfig := osin.NewServerConfig()
 	oauthConfig.AllowedAccessTypes = osin.AllowedAccessType{osin.PASSWORD}
 	return osin.NewServer(oauthConfig, NewRedisStorage())
 }
 
-func NewApiRest(k *Kernel, port int) *mux.Router {
+func NewApiRest(k *dislet.Kernel, port int) *mux.Router {
 
 	router := mux.NewRouter().StrictSlash(true)
 	registerControllers(k, router)
 
 
-	k.container.RegisterType("oauth", NewOAuthServer, k)
-	k.container.MustGet("oauth")
+	k.Container.RegisterType("oauth", NewOAuthServer, k)
+	k.Container.MustGet("oauth")
 
 
 	// Authorization code endpoint
@@ -209,7 +210,7 @@ func NewApiRest(k *Kernel, port int) *mux.Router {
 //authorize?response_type=code&client_id=1234&redirect_uri=http%3A%2F%2Flocalhost%3A14000%2Fappauth%2Fcode
 //curl 'http://localhost:8090/token' -d 'grant_type=password&username=pepe&password=21212&client_id=pepe' -H 'Authorization: Basic cGVwZTpsb2xhem8='
 	// Access token endpoint
-	router.Handle("/token", Handler{k, CheckToken})
+	//router.Handle("/token", Handler{k, CheckToken})
 
 	go http.ListenAndServe(fmt.Sprintf(":%v", port), router)
 	fmt.Println("Escuchando en puerto ", port)
@@ -218,20 +219,20 @@ func NewApiRest(k *Kernel, port int) *mux.Router {
 }
 
 
-func apiRestBootstrap(k *Kernel) {
+func apiRestBootstrap(k *dislet.Kernel) {
 	//fmt.Println("DATABASE BOOT")
-	mapping := k.config.mapping
-	mapping["api"] = &ApiRestConfig{}
+	mapping := k.Config.Mapping
+	mapping["api"] = &Config{}
 
-	var baz OnKernelReady = func(k *Kernel){
+	var baz dislet.OnKernelReady = func(k *dislet.Kernel){
 		color.Green("Evento en api")
-		conf := k.config.mapping["api"].(*ApiRestConfig)
-		k.container.RegisterType("api", NewApiRest, k, conf.Port)
-		k.container.MustGet("api")
+		conf := k.Config.Mapping["api"].(*Config)
+		k.Container.RegisterType("api", NewApiRest, k, conf.Port)
+		k.Container.MustGet("api")
 
 
 	}
-	k.subscribe(baz)
+	k.Subscribe(baz)
 
 
 

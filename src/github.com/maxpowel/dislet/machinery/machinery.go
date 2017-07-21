@@ -1,17 +1,43 @@
-package main
+package machinery
 
 import (
 	"github.com/fatih/color"
 	"github.com/RichardKnop/machinery/v1"
 	"fmt"
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/jinzhu/gorm"
+	"time"
+	"github.com/maxpowel/dislet"
+
 )
 
-type MachineryConfig struct {
+type Config struct {
 	Broker string `default:"valor"`
 	ResultBackend string `default:"PUERTOOO"`
 	DefaultQueue string
 }
+
+type UserConsumption struct {
+	gorm.Model
+	InternetTotal uint
+	InternetConsumed uint
+	CallTotal uint
+	CallConsumed uint
+	RenewTime time.Time
+}
+
+type UserDevice struct {
+	gorm.Model
+	Uuid uint
+
+}
+
+type Device struct {
+	gorm.Model
+	Uuid uint
+
+}
+
 
 /*func NewConnection(dialect string, uri string) *gorm.DB {
 	db, _ := gorm.Open(dialect, uri)
@@ -52,19 +78,19 @@ func GetAnonymousConsumptionTask(username string, password string, operator stri
 
 }
 
-func machineryBootstrap(k *Kernel) {
+func Bootstrap(k *dislet.Kernel) {
 	//fmt.Println("DATABASE BOOT")
-	mapping := k.config.mapping
-	mapping["machinery"] = &MachineryConfig{}
-	var baz OnKernelReady = func(k *Kernel){
+	mapping := k.Config.Mapping
+	mapping["machinery"] = &Config{}
+	var baz dislet.OnKernelReady = func(k *dislet.Kernel){
 		color.Green("Evento en machinery")
-		machineryConfig := k.config.mapping["machinery"].(*MachineryConfig)
-		fmt.Println(machineryConfig)
+		mConfig := k.Config.Mapping["machinery"].(*Config)
+		fmt.Println(mConfig)
 
 		var cnf = config.Config{
-			Broker: machineryConfig.Broker,
-			ResultBackend: machineryConfig.ResultBackend,
-			DefaultQueue: machineryConfig.DefaultQueue,
+			Broker: mConfig.Broker,
+			ResultBackend: mConfig.ResultBackend,
+			DefaultQueue: mConfig.DefaultQueue,
 			//Broker : "redis://localhost:6379/0",
 			//ResultBackend: "redis://localhost:6379/0",
 			//Broker:             "amqp://guest:guest@localhost:5672/",
@@ -102,15 +128,15 @@ func machineryBootstrap(k *Kernel) {
 
 		go runWorker(server)
 
-		//k.container.RegisterType("database", NewConnection, conf.Dialect, conf.Uri)
+		//k.Container.RegisterType("database", NewConnection, conf.Dialect, conf.Uri)
 		iny := func() *machinery.Server{
 			return server
 		}
-		k.container.RegisterType("machinery", iny)
+		k.Container.RegisterType("machinery", iny)
 
 
 	}
-	k.subscribe(baz)
+	k.Subscribe(baz)
 
 
 

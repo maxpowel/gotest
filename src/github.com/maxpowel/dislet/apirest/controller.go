@@ -1,4 +1,4 @@
-package main
+package apirest
 
 import (
 	"net/http"
@@ -11,6 +11,9 @@ import (
 	"github.com/RangelReale/osin"
 	"github.com/jinzhu/gorm"
 	"io/ioutil"
+	"github.com/maxpowel/dislet"
+	"github.com/maxpowel/dislet/usermngr"
+
 )
 
 type CredentialsValidator struct {
@@ -49,7 +52,7 @@ type AnonymousConsumptionValidator struct {
 	Credentials CredentialsValidator `validate:"required"`
 }
 
-func GetAnonymousConsumption(kernel *Kernel, w http.ResponseWriter, r *http.Request) error {
+func GetAnonymousConsumption(kernel *dislet.Kernel, w http.ResponseWriter, r *http.Request) error {
 	requestData := &AnonymousConsumptionRequest{}
 	err := getBody(requestData, r)
 	if err != nil {
@@ -125,7 +128,7 @@ func anonymousConsumptionSignature (data *AnonymousConsumptionRequest) (*tasks.S
 }
 
 
-func registerControllers(k *Kernel, router *mux.Router) {
+func registerControllers(k *dislet.Kernel, router *mux.Router) {
 	router.HandleFunc("/", Index)
 	router.HandleFunc("/todos", TodoIndex)
 	router.HandleFunc("/todos/{todoId}", TodoShow)
@@ -137,7 +140,7 @@ func registerControllers(k *Kernel, router *mux.Router) {
 	router.Handle("/consumption/{taskUid}", Handler{k, GetTaskState})
 	router.Handle("/task/{taskUid}", Handler{k, GetTaskState})
 }
-func GetIndex(kernel *Kernel, w http.ResponseWriter, r *http.Request) error {
+func GetIndex(kernel *dislet.Kernel, w http.ResponseWriter, r *http.Request) error {
 
 	fmt.Println("EL OTRO HILO")
 
@@ -157,7 +160,7 @@ func GetIndex(kernel *Kernel, w http.ResponseWriter, r *http.Request) error {
 	}
 
 	fmt.Println("Enviando task...")
-	server := kernel.container.MustGet("machinery").(*machinery.Server)
+	server := kernel.Container.MustGet("machinery").(*machinery.Server)
 	asyncResult, err := server.SendTask(&task0)
 
 	if err != nil {
@@ -188,9 +191,9 @@ func GetIndex(kernel *Kernel, w http.ResponseWriter, r *http.Request) error {
 
 
 
-func CheckToken(kernel *Kernel, w http.ResponseWriter, r *http.Request) error {
-	server := kernel.container.MustGet("oauth").(*osin.Server)
-	database := kernel.container.MustGet("database").(*gorm.DB)
+func CheckToken(kernel *dislet.Kernel, w http.ResponseWriter, r *http.Request) error {
+	server := kernel.Container.MustGet("oauth").(*osin.Server)
+	database := kernel.Container.MustGet("database").(*gorm.DB)
 
 	resp := server.NewResponse()
 	defer resp.Close()
@@ -199,9 +202,9 @@ func CheckToken(kernel *Kernel, w http.ResponseWriter, r *http.Request) error {
 	if ar := server.HandleAccessRequest(resp, r); ar != nil {
 		username := r.Form.Get("username")
 		password := r.Form.Get("password")
-		user := User{}
+		user := usermngr.User{}
 		database.Where("username = ?", username).First(&user)
-		err = checkPassword(&user, password)
+		err = user.CheckPassword(&user, password)
 		ar.Authorized = err == nil
 		if ar.Authorized {
 			ar.UserData = user.ID
@@ -226,9 +229,9 @@ func CheckToken(kernel *Kernel, w http.ResponseWriter, r *http.Request) error {
 
 
 
-func GetConsumption(kernel *Kernel, w http.ResponseWriter, r *http.Request) error {
-	//server := kernel.container.MustGet("oauth").(*osin.Server)
-	//database := kernel.container.MustGet("database").(*gorm.DB)
+func GetConsumption(kernel *dislet.Kernel, w http.ResponseWriter, r *http.Request) error {
+	//server := kernel.Container.MustGet("oauth").(*osin.Server)
+	//database := kernel.Container.MustGet("database").(*gorm.DB)
 
 	//"alvaro_gg@hotmail.com"
 	//"MBAR4B1"
@@ -278,9 +281,9 @@ func GetConsumption(kernel *Kernel, w http.ResponseWriter, r *http.Request) erro
 	return nil
 }
 
-func GetTaskState(kernel *Kernel, w http.ResponseWriter, r *http.Request) error {
-	server := kernel.container.MustGet("machinery").(*machinery.Server)
-	//api := kernel.container.MustGet("api").(*mux.Router)
+func GetTaskState(kernel *dislet.Kernel, w http.ResponseWriter, r *http.Request) error {
+	server := kernel.Container.MustGet("machinery").(*machinery.Server)
+	//api := kernel.Container.MustGet("api").(*mux.Router)
 	vars := mux.Vars(r)
 	taskUid := vars["taskUid"]
 
