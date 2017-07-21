@@ -1,4 +1,4 @@
-package user
+package usermngr
 
 import (
 	"github.com/jinzhu/gorm"

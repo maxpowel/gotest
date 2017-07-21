@@ -16,6 +16,8 @@ import (
 	"io/ioutil"
 	"gopkg.in/go-playground/validator.v9"
 	"github.com/maxpowel/dislet"
+	"github.com/maxpowel/dislet/apirest/protomodel"
+	mprotomodel "github.com/maxpowel/dislet/machinery/protomodel"
 
 )
 
@@ -52,7 +54,7 @@ type Handler struct {
 	H func(k *dislet.Kernel, w http.ResponseWriter, r *http.Request) error
 }
 
-func getBody(protoMessage proto.Message, r *http.Request) (error){
+func GetBody(protoMessage proto.Message, r *http.Request) (error){
 	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
@@ -68,7 +70,7 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case Error:
 			// We can retrieve the status here and write out a specific
 			// HTTP status code.
-			errorProto := &ErrorProto{
+			errorProto := &protomodel.Error{
 				Code: int32(e.Status()),
 				Description: e.Error(),
 			}
@@ -94,20 +96,20 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 
 // Format task information. Used everytime your controller runs a task
-func taskResponseHandler(result *backends.AsyncResult) ([]byte, error){
-	state := TaskState_UNKWNOWN
+func TaskResponseHandler(result *backends.AsyncResult) ([]byte, error){
+	state := mprotomodel.TaskState_UNKWNOWN
 
 	switch result.GetState().State {
-	case "PENDING": state = TaskState_PENDING
-	case "RECEIVED": state = TaskState_RECEIVED
-	case "STARTED": state = TaskState_STARTED
-	case "RETRY": state = TaskState_RETRY
-	case "SUCCESS": state = TaskState_SUCCESS
-	case "FAILURE": state = TaskState_FAILURE
+	case "PENDING": state = mprotomodel.TaskState_PENDING
+	case "RECEIVED": state = mprotomodel.TaskState_RECEIVED
+	case "STARTED": state = mprotomodel.TaskState_STARTED
+	case "RETRY": state = mprotomodel.TaskState_RETRY
+	case "SUCCESS": state = mprotomodel.TaskState_SUCCESS
+	case "FAILURE": state = mprotomodel.TaskState_FAILURE
 	}
 
 
-	ts := TaskStateResponse{
+	ts := mprotomodel.TaskStateResponse{
 		State: state,
 		ETA: 0,
 		Uid: result.GetState().TaskUUID,
@@ -117,19 +119,19 @@ func taskResponseHandler(result *backends.AsyncResult) ([]byte, error){
 }
 
 // Shortcut to launch a task
-func sendTask(kernel *dislet.Kernel, task *tasks.Signature) ([]byte, error){
+func SendTask(kernel *dislet.Kernel, task *tasks.Signature) ([]byte, error){
 	server := kernel.Container.MustGet("machinery").(*machinery.Server)
 	asyncResult, err := server.SendTask(task)
 	if err != nil {
 		return nil, err
 	}
 
-	return taskResponseHandler(asyncResult)
+	return TaskResponseHandler(asyncResult)
 }
 
 
 // Validate input data against a model
-func validate(data interface{}, validatorI interface{}) (*interface{}, error) {
+func Validate(data interface{}, validatorI interface{}) (*interface{}, error) {
 	var validate *validator.Validate
 	validate = validator.New()
 
@@ -170,7 +172,6 @@ func NewOAuthServer(k *dislet.Kernel) *osin.Server {
 func NewApiRest(k *dislet.Kernel, port int) *mux.Router {
 
 	router := mux.NewRouter().StrictSlash(true)
-	registerControllers(k, router)
 
 
 	k.Container.RegisterType("oauth", NewOAuthServer, k)
@@ -219,7 +220,7 @@ func NewApiRest(k *dislet.Kernel, port int) *mux.Router {
 }
 
 
-func apiRestBootstrap(k *dislet.Kernel) {
+func Bootstrap(k *dislet.Kernel) {
 	//fmt.Println("DATABASE BOOT")
 	mapping := k.Config.Mapping
 	mapping["api"] = &Config{}

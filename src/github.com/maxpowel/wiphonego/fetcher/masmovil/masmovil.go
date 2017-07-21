@@ -1,4 +1,4 @@
-package main
+package masmovil
 
 import (
 	"net/url"
@@ -7,41 +7,42 @@ import (
 	"log"
 	"regexp"
 	"strconv"
+	"github.com/maxpowel/wiphonego"
 )
 
-type MasMovilFetcher struct {
-	fetcher *WebFetcher
-	credentials Credentials
+type Fetcher struct {
+	Fetcher *wiphonego.WebFetcher
+	Credentials *wiphonego.Credentials
 }
 
-func (f *MasMovilFetcher) login() (error) {
+func (f *Fetcher) login() (error) {
 	form := url.Values{}
 	form.Add("action", "login")
 	form.Add("url", "")
-	form.Add("user", f.credentials.username)
-	form.Add("password", f.credentials.password)
+	form.Add("user", f.Credentials.Username)
+	form.Add("password", f.Credentials.Password)
 
-	f.fetcher.get("https://yosoymas.masmovil.es/validate/")
+	f.Fetcher.Get("https://yosoymas.masmovil.es/validate/")
 	time.Sleep(3 * time.Second)
-	f.fetcher.post("https://yosoymas.masmovil.es/validate/", form)
-	f.fetcher.SaveCookies("cookies.json")
+	f.Fetcher.Post("https://yosoymas.masmovil.es/validate/", form)
+	f.Fetcher.SaveCookies("cookies.json")
 	time.Sleep(1 * time.Second)
 
 	return nil
 }
 
-func (f *MasMovilFetcher) getInternetConsumption(phoneNumber string) (InternetConsumption, error){
+func (f *Fetcher) GetInternetConsumption(phoneNumber string) (wiphonego.InternetConsumption, error){
 
 	f.login()
 	//f.fetcher.LoadCookies("cookies.json")
-	res, err := f.fetcher.get("https://yosoymas.masmovil.es/consumo/?line="+phoneNumber)
+	res, err := f.Fetcher.Get("https://yosoymas.masmovil.es/consumo/?line="+phoneNumber)
 	doc, err := goquery.NewDocumentFromResponse(res)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	//ci := make(chan InternetConsumption)
-	c := InternetConsumption{}
+	c := wiphonego.InternetConsumption{}
 	doc.Find(".box-main-content").Find(".progress").Each(func(i int, s *goquery.Selection) {
 		// For each item found, get the band and title
 		//c := s.Find("span").Text()
@@ -53,12 +54,12 @@ func (f *MasMovilFetcher) getInternetConsumption(phoneNumber string) (InternetCo
 			//fmt.Printf("Megas gastados %v de %v\n", r[0], r[1])
 			consumed, err := strconv.ParseInt(r[0],10, 64)
 			if err == nil {
-				c.consumed = consumed
+				c.Consumed = consumed
 			}
 
 			total, err := strconv.ParseInt(r[1],10, 64)
 			if err == nil {
-				c.total = total
+				c.Total = total
 			}
 		} else {
 			//fmt.Printf("Minutos gastados %v de %v\n", r[0], r[1])
@@ -70,9 +71,9 @@ func (f *MasMovilFetcher) getInternetConsumption(phoneNumber string) (InternetCo
 
 }
 
-func NewMasMovilFetcher (credentials Credentials) *MasMovilFetcher{
-	return &MasMovilFetcher{
-		fetcher: NewWebFetcher(&url.URL{Host:"yosoymas.masmovil.es", Scheme:"https"}),
-		credentials: credentials,
+func NewFetcher (credentials *wiphonego.Credentials) *Fetcher{
+	return &Fetcher{
+		Fetcher: wiphonego.NewWebFetcher(&url.URL{Host:"yosoymas.masmovil.es", Scheme:"https"}),
+		Credentials: credentials,
 	}
 }

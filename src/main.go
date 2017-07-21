@@ -4,10 +4,14 @@ import (
 
 	"github.com/fatih/color"
 	"flag"
-	"github.com/maxpowel/dislet/machinery"
+	wmachinery "github.com/maxpowel/dislet/machinery"
 	"github.com/maxpowel/dislet/database/gorm"
 	"github.com/maxpowel/dislet/mqtt"
 	"github.com/maxpowel/dislet"
+	"github.com/maxpowel/wiphonego/task"
+	"github.com/maxpowel/wiphonego/controller"
+	//"github.com/RichardKnop/machinery/v1"
+	"github.com/maxpowel/dislet/apirest"
 )
 
 //////////////
@@ -34,8 +38,8 @@ func main() {
 	fmt.Println(checkPassword(&u2, "123456"))
 	db.Create(&u2)*/
 	//return
-	//mv := NewMasMovilFetcher(Credentials{username:"alvaro_gg@hotmail.com", password:"MBAR4B1"})
-	//mv := NewPepephoneFetcher(Credentials{username:"maxpowel@gmail.com", password:"TD2nWhG6"})
+	//mv := NewFetcher(Credentials{username:"alvaro_gg@hotmail.com", password:"MBAR4B1"})
+	//mv := NewFetcher(Credentials{username:"maxpowel@gmail.com", password:"TD2nWhG6"})
 	//c ,_ := mv.getInternetConsumption("677077536")
 	//fmt.Println(c)
 
@@ -51,7 +55,7 @@ func main() {
 	color.Green("Starting...")
 	// Dependency injection container
 	//f := []func(k *dislet.Kernel){apiRestBootstrap}
-	f := []func(k *dislet.Kernel){mqtt.Bootstrap,gorm.Bootstrap, machinery.Bootstrap, apiRestBootstrap}
+	f := []func(k *dislet.Kernel){mqtt.Bootstrap,gorm.Bootstrap, wmachinery.Bootstrap, apirest.Bootstrap, task.Bootstrap, controller.Bootstrap}
 
 	kernel := dislet.NewKernel(*configPtr, *parametersPtr, f)
 

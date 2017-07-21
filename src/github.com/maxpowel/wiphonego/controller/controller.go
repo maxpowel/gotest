@@ -1,4 +1,4 @@
-package apirest
+package controller
 
 import (
 	"net/http"
@@ -13,7 +13,8 @@ import (
 	"io/ioutil"
 	"github.com/maxpowel/dislet"
 	"github.com/maxpowel/dislet/usermngr"
-
+	"github.com/maxpowel/dislet/apirest"
+	"github.com/maxpowel/wiphonego/protomodel"
 )
 
 type CredentialsValidator struct {
@@ -53,29 +54,32 @@ type AnonymousConsumptionValidator struct {
 }
 
 func GetAnonymousConsumption(kernel *dislet.Kernel, w http.ResponseWriter, r *http.Request) error {
-	requestData := &AnonymousConsumptionRequest{}
-	err := getBody(requestData, r)
+	requestData := &protomodel.AnonymousConsumptionRequest{}
+	err := apirest.GetBody(requestData, r)
 	if err != nil {
-		return StatusError{401, err}
+		return apirest.StatusError{401, err}
 	}
 	//fmt.Println(requestData.DeviceId)
 	//requestData.DeviceId = "lolazo"
 	//requestData.Credentials = &CredentialsProto{Username:"pepe"}
 	k := &AnonymousConsumptionValidator{}
-	k.Credentials = CredentialsValidator{
-		Username:requestData.Credentials.Username,
-		Password:requestData.Credentials.Password,
-		Operator:requestData.Credentials.Operator,
+	fmt.Println(requestData)
+	if requestData.Credentials != nil {
+		k.Credentials = CredentialsValidator{
+			Username: requestData.Credentials.Username,
+			Password: requestData.Credentials.Password,
+			Operator: requestData.Credentials.Operator,
+		}
 	}
-	_, err = validate(requestData, k)
-	fmt.Println(k)
+	_, err = apirest.Validate(requestData, k)
+
 	if err != nil {
-		return StatusError{402, err}
+		return apirest.StatusError{402, err}
 	}
 
-	response, err := sendTask(kernel, anonymousConsumptionSignature(requestData))
+	response, err := apirest.SendTask(kernel, anonymousConsumptionSignature(requestData))
 	if err != nil {
-		return StatusError{http.StatusInternalServerError, err}
+		return apirest.StatusError{http.StatusInternalServerError, err}
 	}
 	w.Write(response)
 
@@ -103,7 +107,7 @@ func consumptionSignature (username, password, operator string) (*tasks.Signatur
 	}
 }
 
-func anonymousConsumptionSignature (data *AnonymousConsumptionRequest) (*tasks.Signature){
+func anonymousConsumptionSignature (data *protomodel.AnonymousConsumptionRequest) (*tasks.Signature){
 	return &tasks.Signature{
 		Name: "anonymousConsumption",
 		Args: []tasks.Arg{
@@ -128,18 +132,28 @@ func anonymousConsumptionSignature (data *AnonymousConsumptionRequest) (*tasks.S
 }
 
 
-func registerControllers(k *dislet.Kernel, router *mux.Router) {
-	router.HandleFunc("/", Index)
-	router.HandleFunc("/todos", TodoIndex)
-	router.HandleFunc("/todos/{todoId}", TodoShow)
-	router.Methods("PUT").Path("/este").Name("este").HandlerFunc(Index2)
 
-	router.Handle("/tarea", Handler{k, GetIndex})
-	router.Handle("/anonymousConsumption", Handler{k, GetAnonymousConsumption})
-	router.Handle("/consumption", Handler{k, GetConsumption})
-	router.Handle("/consumption/{taskUid}", Handler{k, GetTaskState})
-	router.Handle("/task/{taskUid}", Handler{k, GetTaskState})
+func Bootstrap(k *dislet.Kernel) {
+	var baz dislet.OnKernelReady = func(k *dislet.Kernel){
+		router := k.Container.MustGet("api").(*mux.Router)
+		router.HandleFunc("/", Index)
+		router.HandleFunc("/todos", TodoIndex)
+		router.HandleFunc("/todos/{todoId}", TodoShow)
+		router.Methods("PUT").Path("/este").Name("este").HandlerFunc(Index2)
+
+		router.Handle("/tarea", apirest.Handler{k, GetIndex})
+		router.Handle("/anonymousConsumption", apirest.Handler{k, GetAnonymousConsumption})
+		router.Handle("/consumption", apirest.Handler{k, GetConsumption})
+		router.Handle("/consumption/{taskUid}", apirest.Handler{k, GetTaskState})
+		router.Handle("/task/{taskUid}", apirest.Handler{k, GetTaskState})
+
+	}
+
+	k.Subscribe(baz)
+
 }
+
+
 func GetIndex(kernel *dislet.Kernel, w http.ResponseWriter, r *http.Request) error {
 
 	fmt.Println("EL OTRO HILO")
@@ -169,7 +183,7 @@ func GetIndex(kernel *dislet.Kernel, w http.ResponseWriter, r *http.Request) err
 		// are worth raising a HTTP 500 over vs. which might just be a HTTP
 		// 404, 403 or 401 (as appropriate). It's also clear where our
 		// handler should stop processing by returning early.
-		return StatusError{500, err}
+		return apirest.StatusError{500, err}
 	}
 
 	w.Write([]byte(asyncResult.Signature.UUID))
@@ -202,9 +216,10 @@ func CheckToken(kernel *dislet.Kernel, w http.ResponseWriter, r *http.Request) e
 	if ar := server.HandleAccessRequest(resp, r); ar != nil {
 		username := r.Form.Get("username")
 		password := r.Form.Get("password")
+
 		user := usermngr.User{}
 		database.Where("username = ?", username).First(&user)
-		err = user.CheckPassword(&user, password)
+		err = usermngr.CheckPassword(&user, password)
 		ar.Authorized = err == nil
 		if ar.Authorized {
 			ar.UserData = user.ID
@@ -237,18 +252,18 @@ func GetConsumption(kernel *dislet.Kernel, w http.ResponseWriter, r *http.Reques
 	//"MBAR4B1"
 
 	buf, err := ioutil.ReadAll(r.Body)
-	requestData := &CredentialsProto{}
+	requestData := &protomodel.Credentials{}
 	err = proto.Unmarshal(buf, requestData)
 	if err != nil {
-		return StatusError{400, err}
+		return apirest.StatusError{400, err}
 	}
 
 	//requestData.Password = "pepe"
 	//v := &CredentialsValidator{Username: requestData.Username, Password:requestData.Password}
 
-	_, err = validate(requestData, &CredentialsValidator{})
+	_, err = apirest.Validate(requestData, &CredentialsValidator{})
 	if err != nil {
-		return StatusError{400, err}
+		return apirest.StatusError{400, err}
 	}
 
 	/*username := r.Form.Get("username")
@@ -272,9 +287,9 @@ func GetConsumption(kernel *dislet.Kernel, w http.ResponseWriter, r *http.Reques
 		},
 	}
 
-	response, err := sendTask(kernel, &task0)
+	response, err := apirest.SendTask(kernel, &task0)
 	if err != nil {
-		return StatusError{http.StatusInternalServerError, err}
+		return apirest.StatusError{http.StatusInternalServerError, err}
 	}
 	w.Write(response)
 
@@ -282,7 +297,7 @@ func GetConsumption(kernel *dislet.Kernel, w http.ResponseWriter, r *http.Reques
 }
 
 func GetTaskState(kernel *dislet.Kernel, w http.ResponseWriter, r *http.Request) error {
-	server := kernel.Container.MustGet("machinery").(*machinery.Server)
+	/*server := kernel.Container.MustGet("machinery").(*machinery.Server)
 	//api := kernel.Container.MustGet("api").(*mux.Router)
 	vars := mux.Vars(r)
 	taskUid := vars["taskUid"]
@@ -293,8 +308,9 @@ func GetTaskState(kernel *dislet.Kernel, w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		return StatusError{http.StatusNotFound, fmt.Errorf("Task not found")}
 	}
+*/
 
-	state := TaskState_UNKWNOWN
+	/*state := protomodel.TaskState_UNKWNOWN
 
 	switch task.State {
 	case "PENDING": state = TaskState_PENDING
@@ -317,7 +333,7 @@ func GetTaskState(kernel *dislet.Kernel, w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		return StatusError{http.StatusInternalServerError, err}
 	}
-	w.Write(data)
+	w.Write(data)*/
 
 	return nil
 }

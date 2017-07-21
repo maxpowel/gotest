@@ -1,4 +1,4 @@
-package main
+package wiphonego
 
 import (
 	"fmt"
@@ -24,31 +24,31 @@ import (
 )
 
 type InternetConsumption struct {
-	total int64
-	consumed int64
+	Total int64
+	Consumed int64
 }
 
 type Operator struct{
 	gorm.Model
-	name string
+	Name string
 }
 
 type Credentials struct {
 
-	operator Operator
-	device string
-	username string
-	password string
+	Operator Operator
+	Device string
+	Username string
+	Password string
 }
 
 type WebFetcher struct {
-	client *http.Client
-	baseUrl *url.URL
+	Client *http.Client
+	BaseUrl *url.URL
 
 }
 
 func (wb *WebFetcher) SaveCookies(path string) error {
-	b, err := json.Marshal(wb.cookies())
+	b, err := json.Marshal(wb.Cookies())
 	ioutil.WriteFile(path, b, os.FileMode(0777))
 	return err
 }
@@ -60,7 +60,7 @@ func (wb *WebFetcher) LoadCookies(path string) error {
 	}
 	var cookies  []*http.Cookie
 	json.Unmarshal(a, &cookies)
-	wb.client.Jar.SetCookies(wb.baseUrl, cookies)
+	wb.Client.Jar.SetCookies(wb.BaseUrl, cookies)
 	return err
 }
 
@@ -75,21 +75,21 @@ func NewWebFetcher(url *url.URL) *WebFetcher {
 		Jar: cookieJar,
 	}
 
-	return &WebFetcher{client: client, baseUrl: url}
+	return &WebFetcher{Client: client, BaseUrl: url}
 }
 
-func (wb *WebFetcher) get(url string) (*http.Response, error) {
+func (wb *WebFetcher) Get(url string) (*http.Response, error) {
 	//"https://yosoymas.masmovil.es/validate/"
-	 return wb.client.Get(url)
+	 return wb.Client.Get(url)
 }
 
-func (wb *WebFetcher) cookies() ([]*http.Cookie){
+func (wb *WebFetcher) Cookies() ([]*http.Cookie){
 	//r.Request.URL
-	return wb.client.Jar.Cookies(wb.baseUrl)
+	return wb.Client.Jar.Cookies(wb.BaseUrl)
 }
 
 
-func (wb *WebFetcher) post(url string, values url.Values) (*http.Response, error) {
+func (wb *WebFetcher) Post(url string, values url.Values) (*http.Response, error) {
 	body := bytes.NewBufferString(values.Encode())
 //"https://yosoymas.masmovil.es/validate/"
 	rsp, err := http.NewRequest("POST", url, body)
@@ -101,7 +101,7 @@ func (wb *WebFetcher) post(url string, values url.Values) (*http.Response, error
 	rsp.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	//rsp.Header.Set("Cookie", "sid=141295f502e07f041d21801eff4b9384; visid_incap_967703=KFIHTnZTTECZ+q3CZ0Sf7fgeXlkAAAAAQUIPAAAAAAAdLZPA/2B9PFQqHXoL6hnS; incap_ses_504_967703=0A50WubNsgTYi+7YupH+BvgeXlkAAAAA4tmZh7UuOlx/uPF0v2Hz2w==")
 	rsp.Header.Set("Accept", "*/*")
-	return wb.client.Do(rsp)
+	return wb.Client.Do(rsp)
 }
 
 func cosa() {
@@ -138,7 +138,7 @@ func cosa() {
 
 	//r, err := http.NewRequest("GET", "https://yosoymas.masmovil.es/validate/", nil)
 	//fmt.Println(r.URL.Host)
-	fmt.Println(c.cookies())
+	fmt.Println(c.Cookies())
 
 	//res, err := c.get("https://yosoymas.masmovil.es")
 	/*s, _ := json.Marshal(r2.URL)
@@ -146,7 +146,7 @@ func cosa() {
 	return*/
 
 
-	res, err := c.get("https://yosoymas.masmovil.es/consumo/?line=677077536")
+	res, err := c.Get("https://yosoymas.masmovil.es/consumo/?line=677077536")
 	//r, _ = client.Get("https://yosoymas.masmovil.es/")
 	//data, _ := ioutil.ReadAll(res.Body)
 

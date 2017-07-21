@@ -1,10 +1,7 @@
 package mqtt
 
 import (
-	"github.com/golang/protobuf/proto"
 	"fmt"
-	"log"
-	"io/ioutil"
 	"github.com/eclipse/paho.mqtt.golang"
 	"time"
 	"github.com/jinzhu/gorm"

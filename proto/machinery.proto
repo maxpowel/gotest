@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package protomodel;
+
+enum TaskState {
+  UNKWNOWN = 0;
+  PENDING = 1;
+  RECEIVED = 2;
+  STARTED = 3;
+  RETRY = 4;
+  SUCCESS = 5;
+  FAILURE = 6;
+}
+
+
+message TaskStateResponse {
+  TaskState State = 1;
+  int32 ETA = 2;
+  string Uid = 3;
+}

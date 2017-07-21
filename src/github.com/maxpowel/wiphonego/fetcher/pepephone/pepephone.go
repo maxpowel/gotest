@@ -1,4 +1,4 @@
-package main
+package pepephone
 
 import (
 	"net/url"
@@ -10,35 +10,36 @@ import (
 	"net/http"
 	"io/ioutil"
 	"strings"
+	"github.com/maxpowel/wiphonego"
 
 )
 
-type PepephoneFetcher struct {
-	fetcher *WebFetcher
-	credentials Credentials
+type Fetcher struct {
+	Fetcher *wiphonego.WebFetcher
+	Credentials *wiphonego.Credentials
 }
 
-func (f *PepephoneFetcher) login() {
+func (f *Fetcher) login() {
 	form := url.Values{}
 	form.Add("request_uri", "/login")
-	form.Add("email", f.credentials.username)
-	form.Add("password", f.credentials.password)
+	form.Add("email", f.Credentials.Username)
+	form.Add("password", f.Credentials.Password)
 
-	res, _ := f.fetcher.post("https://www.pepephone.com/login", form)
+	res, _ := f.Fetcher.Post("https://www.pepephone.com/login", form)
 	f.isLogged(res)
-	f.fetcher.SaveCookies("cookies.json")
+	f.Fetcher.SaveCookies("cookies.json")
 	//fmt.Println(f.fetcher.cookies())
 	//data, _ := ioutil.ReadAll(res.Body)
 	//fmt.Println(string(data))
 }
 
-func (f *PepephoneFetcher) getInternetConsumption(phoneNumber string) (InternetConsumption, error){
+func (f *Fetcher) getInternetConsumption(phoneNumber string) (wiphonego.InternetConsumption, error){
 
 	f.login()
-f.fetcher.LoadCookies("cookies.json")
+f.Fetcher.LoadCookies("cookies.json")
 
 	//time.Sleep(time.Second * 3)
-	res, err := f.fetcher.get("https://www.pepephone.com/mipepephone")
+	res, err := f.Fetcher.Get("https://www.pepephone.com/mipepephone")
 	//fmt.Println(f.isLogged(res))
 	doc, err := goquery.NewDocumentFromResponse(res)
 	if err != nil {
@@ -49,11 +50,11 @@ f.fetcher.LoadCookies("cookies.json")
 	//data, _ = ioutil.ReadAll(res.Body)
 	//fmt.Println(string(data))
 	//ci := make(chan InternetConsumption)
-	c := InternetConsumption{}
+	c := wiphonego.InternetConsumption{}
 	doc.Find("h3").Each(func(i int, s *goquery.Selection) {
 		// For each item found, get the band and title
 		//c := s.Find("span").Text()
-		c.consumed = 33
+		c.Consumed = 33
 		fmt.Println("LEL")
 		fmt.Println(s.Text())
 
@@ -65,7 +66,7 @@ f.fetcher.LoadCookies("cookies.json")
 
 }
 
-func (f *PepephoneFetcher) isLogged(res *http.Response) (bool){
+func (f *Fetcher) isLogged(res *http.Response) (bool){
 	data, _ := ioutil.ReadAll(res.Body)
 	fmt.Println(string(data))
 	return !strings.Contains(string(data), "Para acceder a Mi Pepephone")
@@ -73,9 +74,9 @@ func (f *PepephoneFetcher) isLogged(res *http.Response) (bool){
 
 
 
-func NewPepephoneFetcher (credentials Credentials) *PepephoneFetcher{
-	return &PepephoneFetcher{
-		fetcher: NewWebFetcher(&url.URL{Host:"www.pepephone.com", Scheme:"https"}),
-		credentials: credentials,
+func NewFetcher (credentials *wiphonego.Credentials) *Fetcher{
+	return &Fetcher{
+		Fetcher: wiphonego.NewWebFetcher(&url.URL{Host:"www.pepephone.com", Scheme:"https"}),
+		Credentials: credentials,
 	}
 }
