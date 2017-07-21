@@ -93,7 +93,7 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 
 // Format task information. Used everytime your controller runs a task
-func taskResponeHandler(result *backends.AsyncResult) ([]byte, error){
+func taskResponseHandler(result *backends.AsyncResult) ([]byte, error){
 	state := TaskState_UNKWNOWN
 
 	switch result.GetState().State {
@@ -123,7 +123,7 @@ func sendTask(kernel *Kernel, task *tasks.Signature) ([]byte, error){
 		return nil, err
 	}
 
-	return taskResponeHandler(asyncResult)
+	return taskResponseHandler(asyncResult)
 }
 
 

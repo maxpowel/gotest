@@ -88,7 +88,7 @@ func machineryBootstrap(k *Kernel) {
 		taskList := map[string]interface{}{
 			"add":        Add,
 			"consumption": GetConsumptionTask,
-			"anonymousConsumption": GetAnonymousConsumption,
+			"anonymousConsumption": GetAnonymousConsumptionTask,
 		}
 		err = server.RegisterTasks(taskList)
 

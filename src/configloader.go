@@ -26,7 +26,10 @@ type Config struct {
 }
 
 func (c Config) load() {
-	load(c.configFilePath, c.parametersFilePath, c.mapping)
+	_, err := load(c.configFilePath, c.parametersFilePath, c.mapping)
+	if err != nil{
+		log.Fatal(err)
+	}
 }
 
 

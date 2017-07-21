@@ -53,18 +53,22 @@ func GetAnonymousConsumption(kernel *Kernel, w http.ResponseWriter, r *http.Requ
 	requestData := &AnonymousConsumptionRequest{}
 	err := getBody(requestData, r)
 	if err != nil {
-		return StatusError{400, err}
+		return StatusError{401, err}
 	}
-	requestData.DeviceId = "lolazo"
-	requestData.Credentials = &CredentialsProto{Username:"pepe"}
+	//fmt.Println(requestData.DeviceId)
+	//requestData.DeviceId = "lolazo"
+	//requestData.Credentials = &CredentialsProto{Username:"pepe"}
 	k := &AnonymousConsumptionValidator{}
+	k.Credentials = CredentialsValidator{
+		Username:requestData.Credentials.Username,
+		Password:requestData.Credentials.Password,
+		Operator:requestData.Credentials.Operator,
+	}
 	_, err = validate(requestData, k)
 	fmt.Println(k)
 	if err != nil {
-		return StatusError{400, err}
+		return StatusError{402, err}
 	}
-
-	return nil
 
 	response, err := sendTask(kernel, anonymousConsumptionSignature(requestData))
 	if err != nil {

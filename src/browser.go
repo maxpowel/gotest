@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
+	"github.com/jinzhu/gorm"
 )
 
 type InternetConsumption struct {
@@ -27,7 +28,15 @@ type InternetConsumption struct {
 	consumed int64
 }
 
+type Operator struct{
+	gorm.Model
+	name string
+}
+
 type Credentials struct {
+
+	operator Operator
+	device string
 	username string
 	password string
 }

@@ -14,7 +14,7 @@ type MasMovilFetcher struct {
 	credentials Credentials
 }
 
-func (f *MasMovilFetcher) login() {
+func (f *MasMovilFetcher) login() (error) {
 	form := url.Values{}
 	form.Add("action", "login")
 	form.Add("url", "")
@@ -26,6 +26,8 @@ func (f *MasMovilFetcher) login() {
 	f.fetcher.post("https://yosoymas.masmovil.es/validate/", form)
 	f.fetcher.SaveCookies("cookies.json")
 	time.Sleep(1 * time.Second)
+
+	return nil
 }
 
 func (f *MasMovilFetcher) getInternetConsumption(phoneNumber string) (InternetConsumption, error){
