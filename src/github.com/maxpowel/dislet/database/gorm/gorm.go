@@ -5,6 +5,10 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/fatih/color"
 	"github.com/maxpowel/dislet"
+	"github.com/maxpowel/wiphonego"
+	_ "github.com/jinzhu/gorm/dialects/mysql"
+	"log"
+
 )
 
 type Config struct {
@@ -14,10 +18,16 @@ type Config struct {
 
 
 func NewConnection(dialect string, uri string) *gorm.DB {
-	db, _ := gorm.Open(dialect, uri)
+	db, err := gorm.Open(dialect, uri)
 	fmt.Println(uri)
-	//db.LogMode(true)
+	db.LogMode(true)
 	fmt.Println("CREANDO CONEXION")
+	if err != nil {
+		log.Fatal(err)
+	}
+	db.Model(&wiphonego.UserDevice{},).Related(&wiphonego.UserDeviceConsumption{})
+	db.AutoMigrate(&wiphonego.UserDevice{}, &wiphonego.UserDeviceConsumption{})
+
 	//db.AutoMigrate(&User{})
 	/*u := NewUser()
 	PlainPassword(&u, "123456")
@@ -35,6 +45,8 @@ func Bootstrap(k *dislet.Kernel) {
 	var baz dislet.OnKernelReady = func(k *dislet.Kernel){
 		color.Green("Evento en database")
 		conf := k.Config.Mapping["database"].(*Config)
+
+
 		k.Container.RegisterType("database", NewConnection, conf.Dialect, conf.Uri)
 	}
 	k.Subscribe(baz)

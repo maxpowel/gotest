@@ -31,7 +31,7 @@ func (f *Fetcher) login() (error) {
 	return nil
 }
 
-func (f *Fetcher) GetInternetConsumption(phoneNumber string) (wiphonego.InternetConsumption, error){
+func (f *Fetcher) GetInternetConsumption(phoneNumber string) (wiphonego.UserDeviceConsumption, error){
 
 	f.login()
 	//f.fetcher.LoadCookies("cookies.json")
@@ -42,28 +42,31 @@ func (f *Fetcher) GetInternetConsumption(phoneNumber string) (wiphonego.Internet
 	}
 
 	//ci := make(chan InternetConsumption)
-	c := wiphonego.InternetConsumption{}
+	c := wiphonego.UserDeviceConsumption{}
 	doc.Find(".box-main-content").Find(".progress").Each(func(i int, s *goquery.Selection) {
 		// For each item found, get the band and title
 		//c := s.Find("span").Text()
 		re := regexp.MustCompile("([0-9]+)|(infinito)")
 		r := re.FindAllString(s.Text(), -1)
 
-		if i == 0 {
-
 			//fmt.Printf("Megas gastados %v de %v\n", r[0], r[1])
 			consumed, err := strconv.ParseInt(r[0],10, 64)
 			if err == nil {
-				c.Consumed = consumed
+				if i == 0 {
+					c.InternetConsumed = consumed * 1024 * 1024
+				} else {
+					c.CallConsumed = int(consumed)
+				}
 			}
 
 			total, err := strconv.ParseInt(r[1],10, 64)
 			if err == nil {
-				c.Total = total
+				if i == 0 {
+					c.InternetTotal = total * 1024 * 1024
+				} else {
+					c.CallTotal = int(total)
+				}
 			}
-		} else {
-			//fmt.Printf("Minutos gastados %v de %v\n", r[0], r[1])
-		}
 	})
 	//c := <- ci
 	return c, nil

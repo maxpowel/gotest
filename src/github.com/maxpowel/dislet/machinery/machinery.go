@@ -5,8 +5,6 @@ import (
 	"github.com/RichardKnop/machinery/v1"
 	"fmt"
 	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/jinzhu/gorm"
-	"time"
 	"github.com/maxpowel/dislet"
 
 )
@@ -17,26 +15,6 @@ type Config struct {
 	DefaultQueue string
 }
 
-type UserConsumption struct {
-	gorm.Model
-	InternetTotal uint
-	InternetConsumed uint
-	CallTotal uint
-	CallConsumed uint
-	RenewTime time.Time
-}
-
-type UserDevice struct {
-	gorm.Model
-	Uuid uint
-
-}
-
-type Device struct {
-	gorm.Model
-	Uuid uint
-
-}
 
 
 /*func NewConnection(dialect string, uri string) *gorm.DB {

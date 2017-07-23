@@ -297,7 +297,7 @@ func GetConsumption(kernel *dislet.Kernel, w http.ResponseWriter, r *http.Reques
 }
 
 func GetTaskState(kernel *dislet.Kernel, w http.ResponseWriter, r *http.Request) error {
-	/*server := kernel.Container.MustGet("machinery").(*machinery.Server)
+	server := kernel.Container.MustGet("machinery").(*machinery.Server)
 	//api := kernel.Container.MustGet("api").(*mux.Router)
 	vars := mux.Vars(r)
 	taskUid := vars["taskUid"]
@@ -306,34 +306,16 @@ func GetTaskState(kernel *dislet.Kernel, w http.ResponseWriter, r *http.Request)
 	//fmt.Println(task.Results[0].Value)
 
 	if err != nil {
-		return StatusError{http.StatusNotFound, fmt.Errorf("Task not found")}
-	}
-*/
-
-	/*state := protomodel.TaskState_UNKWNOWN
-
-	switch task.State {
-	case "PENDING": state = TaskState_PENDING
-	case "RECEIVED": state = TaskState_RECEIVED
-	case "STARTED": state = TaskState_STARTED
-	case "RETRY": state = TaskState_RETRY
-	case "SUCCESS": state = TaskState_SUCCESS
-	case "FAILURE": state = TaskState_FAILURE
+		return apirest.StatusError{http.StatusNotFound, fmt.Errorf("Task not found")}
 	}
 
+	data, err := apirest.TaskResponseHandler(task)
 
-	ts := TaskStateResponse{
-		State: state,
-		ETA: 0,
-		Uid: task.TaskUUID,
-	}
-
-	data, err := proto.Marshal(&ts)
 
 	if err != nil {
-		return StatusError{http.StatusInternalServerError, err}
+		return apirest.StatusError{http.StatusInternalServerError, err}
 	}
-	w.Write(data)*/
+	w.Write(data)
 
 	return nil
 }

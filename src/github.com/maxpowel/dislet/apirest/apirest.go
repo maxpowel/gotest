@@ -11,7 +11,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/ShaleApps/osinredis"
 	"github.com/golang/protobuf/proto"
-	"github.com/RichardKnop/machinery/v1/backends"
+
 	"github.com/ulule/deepcopier"
 	"io/ioutil"
 	"gopkg.in/go-playground/validator.v9"
@@ -96,10 +96,10 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 
 // Format task information. Used everytime your controller runs a task
-func TaskResponseHandler(result *backends.AsyncResult) ([]byte, error){
+func TaskResponseHandler(result *tasks.TaskState) ([]byte, error){
 	state := mprotomodel.TaskState_UNKWNOWN
 
-	switch result.GetState().State {
+	switch result.State {
 	case "PENDING": state = mprotomodel.TaskState_PENDING
 	case "RECEIVED": state = mprotomodel.TaskState_RECEIVED
 	case "STARTED": state = mprotomodel.TaskState_STARTED
@@ -112,7 +112,7 @@ func TaskResponseHandler(result *backends.AsyncResult) ([]byte, error){
 	ts := mprotomodel.TaskStateResponse{
 		State: state,
 		ETA: 0,
-		Uid: result.GetState().TaskUUID,
+		Uid: result.TaskUUID,
 	}
 
 	return proto.Marshal(&ts)
@@ -126,7 +126,7 @@ func SendTask(kernel *dislet.Kernel, task *tasks.Signature) ([]byte, error){
 		return nil, err
 	}
 
-	return TaskResponseHandler(asyncResult)
+	return TaskResponseHandler(asyncResult.GetState())
 }
 
 

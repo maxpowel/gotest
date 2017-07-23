@@ -19,27 +19,8 @@ import (
 
 	"encoding/json"
 	"io/ioutil"
-
-	"github.com/jinzhu/gorm"
 )
 
-type InternetConsumption struct {
-	Total int64
-	Consumed int64
-}
-
-type Operator struct{
-	gorm.Model
-	Name string
-}
-
-type Credentials struct {
-
-	Operator Operator
-	Device string
-	Username string
-	Password string
-}
 
 type WebFetcher struct {
 	Client *http.Client
