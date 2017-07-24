@@ -15,6 +15,7 @@ import (
 	"github.com/maxpowel/dislet/usermngr"
 	"github.com/maxpowel/dislet/apirest"
 	"github.com/maxpowel/wiphonego/protomodel"
+	"github.com/maxpowel/wiphonego"
 )
 
 type CredentialsValidator struct {
@@ -86,6 +87,32 @@ func GetAnonymousConsumption(kernel *dislet.Kernel, w http.ResponseWriter, r *ht
 	return nil
 }
 
+func GetLastAnonymousConsumption(kernel *dislet.Kernel, w http.ResponseWriter, r *http.Request) error {
+	vars := mux.Vars(r)
+	deviceId := vars["deviceId"]
+	database := kernel.Container.MustGet("database").(*gorm.DB)
+	consumptionData := wiphonego.UserDeviceConsumption{}
+
+	database.Joins("left join user_devices on user_devices.id = user_device_consumptions.device_id").Where("user_devices.uuid = ?", deviceId).Last(&consumptionData)
+
+	response := &protomodel.ConsumptionResponse{}
+	response.CallConsumed = int32(consumptionData.CallConsumed)
+	response.CallTotal = int32(consumptionData.CallTotal)
+	response.InternetConsumed = consumptionData.InternetConsumed
+	response.InternetTotal = consumptionData.InternetTotal
+	response.RenewTime = int32(consumptionData.RenewTime.Unix())
+
+	dataData, err := proto.Marshal(response)
+
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError),
+			http.StatusInternalServerError)
+	}
+
+	w.Write(dataData)
+
+	return nil
+}
 
 func consumptionSignature (username, password, operator string) (*tasks.Signature){
 	return &tasks.Signature{
@@ -142,7 +169,8 @@ func Bootstrap(k *dislet.Kernel) {
 		router.Methods("PUT").Path("/este").Name("este").HandlerFunc(Index2)
 
 		router.Handle("/tarea", apirest.Handler{k, GetIndex})
-		router.Handle("/anonymousConsumption", apirest.Handler{k, GetAnonymousConsumption})
+		router.Handle("/anonymousConsumption", apirest.Handler{k, GetAnonymousConsumption}).Methods("POST")
+		router.Handle("/anonymousConsumption/{deviceId}", apirest.Handler{k, GetLastAnonymousConsumption})
 		router.Handle("/consumption", apirest.Handler{k, GetConsumption})
 		router.Handle("/consumption/{taskUid}", apirest.Handler{k, GetTaskState})
 		router.Handle("/task/{taskUid}", apirest.Handler{k, GetTaskState})

@@ -5,7 +5,7 @@ mqtt:
 
 database:
    dialect: "mysql"
-   uri: "root:123456@tcp(localhost:3306)/mqtt?charset=utf8&parseTime=true"
+   uri: "mqtt:123456@tcp(localhost:3306)/mqtt?charset=utf8&parseTime=true"
 
 machinery:
    broker: "redis://localhost:6379/0"
