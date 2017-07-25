@@ -105,10 +105,12 @@ func GetLastAnonymousConsumption(kernel *dislet.Kernel, w http.ResponseWriter, r
 	dataData, err := proto.Marshal(response)
 
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError),
-			http.StatusInternalServerError)
+		return apirest.StatusError{http.StatusInternalServerError, err}
 	}
 
+	if consumptionData.ID == 0 {
+		return apirest.StatusError{400, fmt.Errorf("Uuid not found")}
+	}
 	w.Write(dataData)
 
 	return nil
@@ -330,8 +332,9 @@ func GetTaskState(kernel *dislet.Kernel, w http.ResponseWriter, r *http.Request)
 	vars := mux.Vars(r)
 	taskUid := vars["taskUid"]
 
+
 	task, err := server.GetBackend().GetState(taskUid)
-	//fmt.Println(task.Results[0].Value)
+
 
 	if err != nil {
 		return apirest.StatusError{http.StatusNotFound, fmt.Errorf("Task not found")}

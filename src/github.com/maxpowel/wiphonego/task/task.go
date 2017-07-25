@@ -24,7 +24,7 @@ func GetConsumptionTask(username string, password string, operator string) (wiph
 
 }
 
-func GetAnonymousConsumptionTask(username string, password string, operator string, deviceId string) (error){
+func GetAnonymousConsumptionTask(username string, password string, operator string, deviceId string) (string, map[string]string, error){
 
 	db := kernel.Container.MustGet("database").(*gorm.DB)
 
@@ -35,18 +35,19 @@ func GetAnonymousConsumptionTask(username string, password string, operator stri
 		c, err := mv.GetInternetConsumption("677077536")
 		if err == nil {
 			device := wiphonego.UserDevice{}
-			db.Where("Uuid = ?", deviceId).FirstOrCreate(&device)
+			db.Where("Uuid = ?", deviceId).FirstOrCreate(&device, wiphonego.UserDevice{Uuid: deviceId})
 			//device.Uuid = device
 			c.Device = device
 			db.Create(&c)
 		}
-		return err
+		return "", nil, err
 	}
-
-	return fmt.Errorf("Operator \"%v\" not available", operator)
+	params := make(map[string]string)
+	params["operator"] = operator
+	return "Operator {operator} is not available", params, nil
 
 }
-
+//fmt.Errorf("Operator \"%v\" is not available", operator)
 
 func Bootstrap(k *dislet.Kernel) {
 	kernel = k

@@ -115,6 +115,26 @@ func TaskResponseHandler(result *tasks.TaskState) ([]byte, error){
 		Uid: result.TaskUUID,
 	}
 
+	if len(result.Results) > 1 {
+		if result.Results[0].Type == "string"  && result.Results[0].Value != nil && result.Results[1].Type == "map[string]string"  && result.Results[1].Value != nil{
+			m := make(map[string]string)
+			for k, v := range result.Results[1].Value.(map[string]interface{}) {
+				m[k] = v.(string)
+			}
+			taskError := mprotomodel.TaskError{
+				Code: 250,
+				Format: result.Results[0].Value.(string),
+				Params: m,
+			}
+			ts.Error = &taskError
+
+		}
+	}
+
+		fmt.Println(result)
+		/**/
+
+
 	return proto.Marshal(&ts)
 }
 
