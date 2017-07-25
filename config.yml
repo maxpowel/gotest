@@ -14,3 +14,6 @@ machinery:
 
 api:
    port: 5000
+
+crypto:
+   key: 4faf5ac99a48453f85a887634a6e86b8

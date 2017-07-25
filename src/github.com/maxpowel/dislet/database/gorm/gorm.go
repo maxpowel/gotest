@@ -43,15 +43,12 @@ func Bootstrap(k *dislet.Kernel) {
 	mapping["database"] = &Config{}
 
 	var baz dislet.OnKernelReady = func(k *dislet.Kernel){
-		color.Green("Evento en database")
+		color.Green("Booting database")
 		conf := k.Config.Mapping["database"].(*Config)
 
 
 		k.Container.RegisterType("database", NewConnection, conf.Dialect, conf.Uri)
 	}
 	k.Subscribe(baz)
-
-
-
 
 }

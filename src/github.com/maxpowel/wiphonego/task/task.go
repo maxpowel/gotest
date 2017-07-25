@@ -54,7 +54,6 @@ func Bootstrap(k *dislet.Kernel) {
 	var baz dislet.OnKernelReady = func(k *dislet.Kernel){
 		server := k.Container.MustGet("machinery").(*machinery.Server)
 		// Register tasks
-		fmt.Println("Registrar tasks")
 
 		err := server.RegisterTasks(map[string]interface{}{
 			"consumption": GetConsumptionTask,

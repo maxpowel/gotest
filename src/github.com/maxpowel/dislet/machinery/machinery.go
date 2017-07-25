@@ -37,9 +37,9 @@ func Bootstrap(k *dislet.Kernel) {
 	mapping := k.Config.Mapping
 	mapping["machinery"] = &Config{}
 	var baz dislet.OnKernelReady = func(k *dislet.Kernel){
-		color.Green("Evento en machinery")
+		color.Green("Booting machinery")
 		mConfig := k.Config.Mapping["machinery"].(*Config)
-		fmt.Println(mConfig)
+		//fmt.Println(mConfig)
 
 		var cnf = config.Config{
 			Broker: mConfig.Broker,
@@ -56,7 +56,7 @@ func Bootstrap(k *dislet.Kernel) {
 				BindingKey:   "machinery_task",
 			},*/
 		}
-		fmt.Println(cnf)
+		//fmt.Println(cnf)
 
 		server, err := machinery.NewServer(&cnf)
 		if err != nil {

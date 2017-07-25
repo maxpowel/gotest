@@ -8,6 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 	"github.com/fatih/color"
+	"flag"
+
 )
 
 type Kernel struct {
@@ -75,5 +77,20 @@ func Daemonize(){
 	}()
 
 	<-done
+
+}
+
+
+func Boot(bootstrapModules []func(k *Kernel)) {
+	color.Green("Starting...")
+	// Parse parameters
+	configPtr := flag.String("config", "config.yml", "Configuration file")
+	parametersPtr := flag.String("parameters", "parameters.yml", "Parameters file")
+	flag.Parse()
+	// Dependency injection container
+	//f := []func(k *dislet.Kernel){apiRestBootstrap}
+	/*kernel := */NewKernel(*configPtr, *parametersPtr, bootstrapModules)
+
+	Daemonize()
 
 }

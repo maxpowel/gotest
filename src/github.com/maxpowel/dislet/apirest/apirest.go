@@ -234,7 +234,7 @@ func NewApiRest(k *dislet.Kernel, port int) *mux.Router {
 	//router.Handle("/token", Handler{k, CheckToken})
 
 	go http.ListenAndServe(fmt.Sprintf(":%v", port), router)
-	fmt.Println("Escuchando en puerto ", port)
+	color.Cyan("Api listening on port %v", port)
 
 	return router
 }
@@ -246,7 +246,7 @@ func Bootstrap(k *dislet.Kernel) {
 	mapping["api"] = &Config{}
 
 	var baz dislet.OnKernelReady = func(k *dislet.Kernel){
-		color.Green("Evento en api")
+		color.Green("Booting api")
 		conf := k.Config.Mapping["api"].(*Config)
 		k.Container.RegisterType("api", NewApiRest, k, conf.Port)
 		k.Container.MustGet("api")

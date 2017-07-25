@@ -1,24 +1,14 @@
 package main
-import "fmt"
 import (
-
-	"github.com/fatih/color"
-	"flag"
 	wmachinery "github.com/maxpowel/dislet/machinery"
 	"github.com/maxpowel/dislet/database/gorm"
 	"github.com/maxpowel/dislet/mqtt"
-	"github.com/maxpowel/dislet"
 	"github.com/maxpowel/wiphonego/task"
 	"github.com/maxpowel/wiphonego/controller"
-	//"github.com/RichardKnop/machinery/v1"
+	"github.com/maxpowel/dislet"
 	"github.com/maxpowel/dislet/apirest"
+	"github.com/maxpowel/dislet/crypto"
 )
-
-//////////////
-
-
-
-
 
 func main() {
 	//u := NewUser()
@@ -38,76 +28,22 @@ func main() {
 	fmt.Println(checkPassword(&u2, "123456"))
 	db.Create(&u2)*/
 	//return
-	//mv := NewFetcher(Credentials{username:"alvaro_gg@hotmail.com", password:"MBAR4B1"})
-	//mv := NewFetcher(Credentials{username:"maxpowel@gmail.com", password:"TD2nWhG6"})
+	//mv := NewFetcher(wiphonego.Credentials{username:"alvaro_gg@hotmail.com"})
+	//mv.SetPlainPassword("MBAR4B1")
+	//mv := NewFetcher(wiphonego.Credentials{username:"maxpowel@gmail.com", password:"TD2nWhG6"})
+	//mv.SetPlainPassword("TD2nWhG6")
 	//c ,_ := mv.getInternetConsumption("677077536")
 	//fmt.Println(c)
-
-
-
-	// The second argument is a consumer tag
-	// Ideally, each worker should have a unique tag (worker1, worker2 etc)
-
-	// Parse parameters
-	configPtr := flag.String("config", "config.yml", "Configuration file")
-	parametersPtr := flag.String("parameters", "parameters.yml", "Parameters file")
-	flag.Parse()
-	color.Green("Starting...")
-	// Dependency injection container
-	//f := []func(k *dislet.Kernel){apiRestBootstrap}
-	f := []func(k *dislet.Kernel){mqtt.Bootstrap,gorm.Bootstrap, wmachinery.Bootstrap, apirest.Bootstrap, task.Bootstrap, controller.Bootstrap}
-
-	kernel := dislet.NewKernel(*configPtr, *parametersPtr, f)
-
-	fmt.Println(kernel.Config.Mapping)
-
-
-	//db2 := container.MustGet("database").(*gorm.DB)
-	//db2.Create(&PlayList{Source: "AAA", SourceType: "BBB"})
-
-	//fmt.Println(conf)
-	//fmt.Println(conf["mqtt"].(map[interface{}]interface{})["topic"])
-
-	/*
-	time.Sleep(5 * time.Second)
-	fmt.Println("EL OTRO HILO")
-
-	// Enviar tarea
-	task0 := tasks.Signature{
-		Name: "add",
-		Args: []tasks.Arg{
-			{
-				Type:  "int64",
-				Value: 1,
-			},
-			{
-				Type:  "int64",
-				Value: 1,
-			},
-		},
+	f := []func(k *dislet.Kernel){
+		mqtt.Bootstrap,
+		gorm.Bootstrap,
+		wmachinery.Bootstrap,
+		apirest.Bootstrap,
+		task.Bootstrap,
+		controller.Bootstrap,
+		crypto.Bootstrap,
 	}
-
-	fmt.Println("Enviando task...")
-	server := kernel.Container.MustGet("machinery").(*machinery.Server)
-	asyncResult, err := server.SendTask(&task0)
-	if err != nil {
-		fmt.Println("Could not send task: %s", err.Error())
-	}
-	fmt.Println("Task enviada")
-
-	fmt.Println("Esperando resultado ...")
-	results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
-	if err != nil {
-		fmt.Println("Getting task result failed with error: %s", err.Error())
-	}
-	fmt.Printf(
-		"%v + %v = %v\n",
-		asyncResult.Signature.Args[0].Value,
-		asyncResult.Signature.Args[1].Value,
-		results[0].Interface(),
-	)
-*/
-	dislet.Daemonize()
+	dislet.Boot(f)
 }
 
 

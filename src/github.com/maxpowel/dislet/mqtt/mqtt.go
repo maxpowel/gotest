@@ -27,12 +27,12 @@ func Bootstrap(k *dislet.Kernel) {
 	mapping["mqtt"] = &MqttConfig{}
 
 	var baz dislet.OnKernelReady = func(k *dislet.Kernel){
-		color.Green("Evento %v en mqtt")
+		color.Green("Booting mqtt")
 		conf := k.Config.Mapping["mqtt"].(*MqttConfig)
 		//conf = k.Config.mapping["mqtt"]
 		// Start mqtt connection
 		//opts := mqtt.NewClientOptions().AddBroker("tcp://iot.eclipse.org:1883").SetClientID("gotrivial")
-		fmt.Println(fmt.Sprintf("tcp://%v:%v", conf.Hostname, conf.Port))
+		//fmt.Println(fmt.Sprintf("tcp://%v:%v", conf.Hostname, conf.Port))
 		service := func() {
 			opts := mqtt.NewClientOptions().AddBroker(fmt.Sprintf("tcp://%v:%v", conf.Hostname, conf.Port))
 
